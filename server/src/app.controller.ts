@@ -22,22 +22,24 @@ export class AppController {
   }
 
   private handleStream(prompt: string, res: StreamResponse) {
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
     res.flushHeaders?.();
 
     const subscription = this.appService.streamResponse(prompt).subscribe({
       next: (chunk) => {
-        res.write(chunk);
+        res.write(`data: ${chunk}\n\n`);
         res.flush?.();
       },
       error: (err) => {
-        res
-          .status(500)
-          .end(`发生错误: ${err instanceof Error ? err.message : err}`);
+        const message = err instanceof Error ? err.message : String(err);
+        res.write(`event: error\ndata: ${message}\n\n`);
+        res.end();
       },
       complete: () => {
+        res.write('data: [DONE]\n\n');
         res.end();
       },
     });

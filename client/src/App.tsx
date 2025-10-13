@@ -82,6 +82,8 @@ function App() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let done = false;
+      let buffer = '';
+      let stopByDone = false;
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
@@ -90,8 +92,34 @@ function App() {
         if (value) {
           const chunk = decoder.decode(value, { stream: !done });
           if (chunk) {
-            setOutput((prev) => prev + chunk);
+            buffer += chunk;
+
+            let separatorIndex = buffer.indexOf('\n\n');
+            while (separatorIndex !== -1) {
+              const rawEvent = buffer.slice(0, separatorIndex);
+              buffer = buffer.slice(separatorIndex + 2);
+              separatorIndex = buffer.indexOf('\n\n');
+
+              const { event, data } = parseSSEEvent(rawEvent);
+
+              if (event === 'error') {
+                throw new Error(data || '服务器返回错误');
+              }
+
+              if (data === '[DONE]') {
+                stopByDone = true;
+                done = true;
+                break;
+              }
+
+              if (data) {
+                setOutput((prev) => prev + data);
+              }
+            }
           }
+        }
+        if (stopByDone) {
+          break;
         }
       }
     } catch (err) {
@@ -105,13 +133,29 @@ function App() {
     }
   };
 
+  const parseSSEEvent = (raw: string): { event: string; data: string } => {
+    const lines = raw.split('\n');
+    let eventType = 'message';
+    const dataLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventType = line.slice(6).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart());
+      }
+    }
+
+    return { event: eventType, data: dataLines.join('\n') };
+  };
+
   return (
     <div className="app">
       <main className="panel">
         <section className="panel__header">
           <h1>大模型流式输出演示</h1>
           <p>
-            可在 GET 与 POST 接口之间切换，体验基于 fetch + ReadableStream 的流式展示。
+            可在 GET 与 POST 接口之间切换，体验基于 fetch + ReadableStream 的 SSE 流式展示。
           </p>
         </section>
 
