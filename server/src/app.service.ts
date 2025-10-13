@@ -1,37 +1,29 @@
-import { Injectable, MessageEvent } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
 @Injectable()
 export class AppService {
-  streamResponse(prompt: string): Observable<MessageEvent> {
+  streamResponse(prompt: string): Observable<string> {
     const response = this.buildResponse(prompt);
     const tokens = this.tokenizeResponse(response);
 
-    return new Observable<MessageEvent>((observer) => {
+    return new Observable<string>((observer) => {
       let index = 0;
       const interval = setInterval(() => {
         if (index < tokens.length) {
-          observer.next({
-            data: JSON.stringify({
-              id: index,
-              chunk: tokens[index],
-              done: false,
-            }),
-          });
+          observer.next(tokens[index]);
           index += 1;
           return;
         }
 
-        observer.next({ data: JSON.stringify({ done: true }) });
         clearInterval(interval);
         observer.complete();
-      }, 180);
+      }, 160);
 
       return () => clearInterval(interval);
     });
   }
 
-  // Stream Response
   private buildResponse(prompt: string): string {
     const question =
       prompt.trim().length > 0 ? `“${prompt.trim()}”` : '（未提供提示词）';
@@ -44,8 +36,8 @@ export class AppService {
       '3. 生成草稿：通过语言模型组合信息，得到候选回答。',
       '4. 优化润色：对输出进行逻辑检查、排版和安全过滤，提升可读性。',
       '',
-      '本演示使用 Server-Sent Events，让前端能实时渲染逐步返回的文本，模拟真实大模型的推理过程。',
-      '在真实场景中，模型会利用更多上下文和反馈循环，这里仅展示基础流程。',
+      '本演示现在通过最基础的 chunked 响应模拟流式返回，方便前端使用 fetch 逐步读取。',
+      '实际模型会结合更多记忆、工具和反馈循环，这里仅展示核心流程。',
     ].join('\n');
   }
 
