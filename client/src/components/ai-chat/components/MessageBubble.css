@@ -1,0 +1,169 @@
+.message-bubble {
+  display: flex;
+  margin-top: 16px;
+}
+
+.message-bubble .loading {
+  display: flex;
+  align-items: center;
+}
+
+.message-bubble .loading .loading-lottie {
+  padding: 8px 0;
+  width: 31px;
+  height: 7px;
+}
+
+.message-bubble .message {
+  position: relative;
+  padding: 12px 16px;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  font-size: 16px;
+  border-radius: 16px;
+  box-sizing: border-box;
+  line-height: 24px;
+  word-break: break-word;
+}
+
+.message-bubble .message .msg-content .msg-text {
+  white-space: pre-wrap;
+}
+
+.message-bubble .message .msg-content .progress {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  background: #5A5AFF;
+  border-radius: 137px;
+  vertical-align: middle;
+}
+
+.message-bubble .message .interrupt {
+  margin-top: 12px;
+}
+
+.message-bubble .message .interrupt .divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(39, 39, 39, 0.08);
+}
+
+.message-bubble .message .interrupt .retry {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #5A5AFF;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.message-bubble .message .interrupt .retry img {
+  margin-right: 6px;
+  width: 24px;
+  height: 24px;
+}
+
+.message-bubble .message .operation-bar {
+  margin-top: 12px;
+}
+
+.message-bubble .message .operation-bar .divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(39, 39, 39, 0.08);
+}
+
+.message-bubble .message .operation-bar .operation-list {
+  display: flex;
+  margin-top: 12px;
+}
+
+.message-bubble .message .operation-bar .operation-list .read {
+  display: flex;
+  align-items: center;
+  width: 151px;
+  flex: 1;
+}
+
+.message-bubble .message .operation-bar .operation-list .read .play-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.message-bubble .message .operation-bar .operation-list .read .audio-lottie {
+  margin-left: 6px;
+  width: 62px;
+  height: 18px;
+}
+
+.message-bubble .message .operation-bar .operation-list .read .loading-lottie {
+  margin-left: 6px;
+  width: 31px;
+  height: 7px;
+}
+
+.message-bubble .message .operation-bar .operation-list .copy,
+.message-bubble .message .operation-bar .operation-list .like,
+.message-bubble .message .operation-bar .operation-list .dislike {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: 16px;
+  width: 32px;
+  height: 32px;
+  background: rgba(90, 90, 255, 0.08);
+  border-radius: 8px;
+}
+
+.message-bubble .message .operation-bar .operation-list .copy img,
+.message-bubble .message .operation-bar .operation-list .like img,
+.message-bubble .message .operation-bar .operation-list .dislike img {
+  width: 20px;
+  height: 20px;
+}
+
+.message-bubble .message .operation-bar .operation-list .copy {
+  margin-left: 0;
+}
+
+.message-bubble .user-message {
+  margin-left: auto;
+  color: #FFF;
+  background: linear-gradient(135deg, #8686FF 0%, #5A5AFF 100%);
+}
+
+.user-message-animation {
+  transform-origin: right bottom;
+  animation: user-pop-up 0.3s ease-in forwards;
+}
+
+.message-bubble .assistant-message {
+  color: #272727;
+  background: #F4F6F8;
+}
+
+.assistant-message-animation {
+  animation: assistant-pop-up 0.3s ease-in forwards;
+  transform-origin: left top;
+}
+
+@keyframes user-pop-up {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes assistant-pop-up {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

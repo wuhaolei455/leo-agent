@@ -1,0 +1,21 @@
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fb;
+  color: #1f2330;
+}
+
+.app-layout__main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 32px 16px 48px;
+}
+
+.app-layout__main > * {
+  width: 100%;
+  max-width: 960px;
+}
+
+
