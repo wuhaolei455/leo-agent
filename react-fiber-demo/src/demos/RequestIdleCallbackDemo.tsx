@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import './RequestIdleCallbackDemo.css';
 
 /**
@@ -192,7 +192,6 @@ const RequestIdleCallbackDemo: React.FC = () => {
   // 演示5: 模拟繁忙场景
   const [isBusy, setIsBusy] = useState(false);
   const [idleProgress, setIdleProgress] = useState(0);
-  const busyIntervalRef = useRef<number | null>(null);
 
   const simulateBusyScenario = () => {
     setIdleProgress(0);

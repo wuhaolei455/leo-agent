@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, JSX } from 'react';
+import React, { useState, useRef, JSX } from 'react';
 import './FiberArchitecture.css';
 
 /**
@@ -6,7 +6,8 @@ import './FiberArchitecture.css';
  * Fiber 是 React 16 引入的新协调引擎，实现了可中断的渲染
  */
 
-// 定义 Fiber 节点类型
+// 定义 Fiber 节点类型（用于文档说明）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface FiberNode {
   type: string;
   props: any;
@@ -66,6 +67,7 @@ function* createFiberTree(element: any, parent: SimpleFiber | null = null): Gene
 }
 
 // 3. 模拟工作循环（Work Loop）
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class FiberScheduler {
   private workInProgress: Generator | null = null;
   private deadline: number = 0;

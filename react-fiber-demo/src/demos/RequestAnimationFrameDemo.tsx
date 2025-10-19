@@ -13,7 +13,6 @@ const RequestAnimationFrameDemo: React.FC = () => {
   const [avgFrameTime, setAvgFrameTime] = useState(0);
   const [fps, setFps] = useState(0);
   
-  const startTimeRef = useRef(0);
   const animationIdRef = useRef<number | null>(null);
   const divRef = useRef<HTMLDivElement>(null);
 
