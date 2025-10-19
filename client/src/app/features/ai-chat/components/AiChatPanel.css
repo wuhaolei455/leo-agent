@@ -1,0 +1,10 @@
+.ai-chat-panel {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 16px;
+  width: 100%;
+  height: calc(100vh - 160px);
+  max-height: 820px;
+}
+
+
