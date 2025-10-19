@@ -1,0 +1,45 @@
+.message-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+}
+
+.message-composer__input {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1f2330;
+}
+
+.message-composer__input::placeholder {
+  color: #9aa1b2;
+}
+
+.message-composer__submit {
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  background: #1777ff;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.message-composer__submit:disabled {
+  background: #aab6d4;
+  cursor: not-allowed;
+}
+
+.message-composer__submit:not(:disabled):hover {
+  background: #0e63d6;
+}
+
+

@@ -1,0 +1,49 @@
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 12px 24px;
+}
+
+.app-header__brand {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+}
+
+.app-header__nav {
+  display: flex;
+  gap: 12px;
+}
+
+.app-header__link {
+  padding: 8px 16px;
+  border-radius: 999px;
+  color: #4a4a4a;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.app-header__link:hover {
+  color: #1b1b1b;
+  background: rgba(23, 119, 255, 0.08);
+}
+
+.app-header__link--active {
+  color: white;
+  background: #1777ff;
+  box-shadow: 0 4px 12px rgba(23, 119, 255, 0.3);
+}
+
+

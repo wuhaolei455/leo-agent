@@ -1,0 +1,68 @@
+.input-container {
+  position: fixed;
+  right: 16px;
+  bottom: 0;
+  left: 16px;
+  z-index: 10;
+  padding: 16px 0;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  min-height: 50px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0%) 0%, rgba(255, 255, 255, 0%) 50%, #FFF 50%, #FFF 100%);
+}
+
+.input-container .disable-text {
+  padding-top: 32px;
+  margin-bottom: 16px;
+  font-size: 16px;
+  text-align: center;
+  color: #5A5AFF;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0%) 0%, #FFF 31%);
+  opacity: 1;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.input-container .input-disable {
+  opacity: 0.2;
+}
+
+.input-container .user-input {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 12px 12px 16px;
+  background: #FFF;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px 4px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.input-container .user-input .textarea {
+  box-sizing: border-box;
+  width: calc(100% - 42px);
+  height: 24px;
+  max-height: 94px;
+  font-size: 16px;
+  color: #272727;
+  caret-color: #5A5AFF;
+  line-height: 24px;
+  border: none;
+  outline: none;
+  resize: none;
+}
+
+.input-container .user-input .textarea::placeholder {
+  font-size: 16px;
+  color: #909090;
+}
+
+.input-container .user-input .voice-input,
+.input-container .user-input .send {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
+}

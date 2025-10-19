@@ -1,0 +1,10 @@
+export enum VoiceChatStatus {
+  CALLING,
+  WELCOME,
+  THINKING,
+  SPEAKING,
+  LISTENING,
+  NETWORK_ERROR,
+  SERVER_ERROR,
+  RECONECTING,
+}

@@ -1,0 +1,115 @@
+.record-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 50px;
+}
+
+.record-container .voice-input-container {
+  position: relative;
+  padding-bottom: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  width: calc(100% - 32px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0%) 0%, rgba(255, 255, 255, 0%) 50%, #FFF 50%, #FFF 100%);
+}
+
+.record-container .voice-input-container .voice-input {
+  background: #FFF;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px 4px rgba(0, 0, 0, 0.08);
+}
+
+.record-container .voice-input-container .voice-input.touching {
+  background-color: #F5F5F5;
+}
+
+.record-container .voice-input-container .voice-input .voice-text {
+  padding: 13.5px;
+  font-size: 16px;
+  text-align: center;
+  color: #272727;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.record-container .voice-input-container .voice-input .keyboard {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+}
+
+.record-container .recording {
+  width: 100%;
+}
+
+.record-container .recording .record-info {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: -40px;
+  height: 200px;
+  background: #F4F6FF;
+  flex-direction: column;
+}
+
+.record-container .recording .record-info .counting {
+  font-size: 16px;
+  line-height: 24px;
+  color: #5A5AFF;
+}
+
+.record-container .recording .record-info .counting.warning {
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 24px;
+  color: #F54310;
+}
+
+.record-container .recording .record-info .voice-animation {
+  margin-top: 19px;
+  width: 160px;
+  height: 24px;
+}
+
+.record-container .recording .record-btn-container {
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0%) 0%, rgba(255, 255, 255, 0%) 50%, #FFF 50%, #FFF 100%);
+}
+
+.record-container .recording .record-btn-container .record {
+  display: flex;
+  align-items: center;
+  padding-top: 46px;
+  width: 100%;
+  height: 204px;
+  background: #FFF;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.record-container .recording .record-btn-container .record .record-text {
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  color: #7A7A7A;
+}
+
+.record-container .recording .record-btn-container .record .voice-record {
+  margin: auto auto 16px;
+  width: calc(100% - 32px);
+  height: 50px;
+  background: #5A5AFF;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+}

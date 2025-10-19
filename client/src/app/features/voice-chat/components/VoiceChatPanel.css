@@ -1,0 +1,38 @@
+.voice-chat-panel {
+  display: grid;
+  gap: 24px;
+  padding: 32px;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.08);
+  justify-items: center;
+}
+
+.voice-chat-panel__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.voice-chat-panel__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.voice-chat-panel__hangup {
+  padding: 12px 24px;
+  border-radius: 999px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+
+.voice-chat-panel__hangup:hover {
+  background: #dc2626;
+}
+
+
