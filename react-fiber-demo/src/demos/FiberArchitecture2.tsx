@@ -1,376 +1,15 @@
 import React, { useState, useRef, JSX } from 'react';
 import './FiberArchitecture.css';
-
-/**
- * React Fiber 架构演示
- * Fiber 是 React 16 引入的新协调引擎，实现了可中断的渲染
- */
-
-// 定义 Fiber 节点类型（用于文档说明）
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface FiberNode {
-  type: string;
-  props: any;
-  child?: FiberNode;
-  sibling?: FiberNode;
-  parent?: FiberNode;
-  effectTag?: 'PLACEMENT' | 'UPDATE' | 'DELETION';
-  alternate?: FiberNode;
-}
-
-// 1. 模拟简单的 Fiber 树结构
-class SimpleFiber {
-  type: string;
-  props: any;
-  child: SimpleFiber | null = null;
-  sibling: SimpleFiber | null = null;
-  parent: SimpleFiber | null = null;
-  
-  // 双缓冲机制
-  alternate: SimpleFiber | null = null; // 指向另一棵树的对应节点
-  
-  // 副作用标记
-  effectTag: 'PLACEMENT' | 'UPDATE' | 'DELETION' | null = null;
-  
-  // DOM 节点引用
-  stateNode: HTMLElement | Text | null = null;
-  
-  // 旧的 props（用于 diff）
-  oldProps: any = null;
-
-  constructor(type: string, props: any) {
-    this.type = type;
-    this.props = props;
-  }
-}
-
-// 2. 创建 Fiber 树的 Generator
-function* createFiberTree(element: any, parent: SimpleFiber | null = null): Generator<SimpleFiber> {
-  // 1. 创建并 yield 当前节点
-  const fiber = new SimpleFiber(element.type, element.props);
-  fiber.parent = parent;
-  yield fiber;
-  
-  // 2. 处理子节点
-  if (!element.children?.length) return fiber;
-  
-  let prevSibling: SimpleFiber | null = null;
-  
-  for (let i = 0; i < element.children.length; i++) {
-    // 递归生成子树
-    const childGen = createFiberTree(element.children[i], fiber);
-    const childRoot = childGen.next().value; // 获取子树根节点
-    
-    // 设置链表关系（只对直接子节点）
-    if (i === 0) {
-      fiber.child = childRoot;
-    } else {
-      prevSibling!.sibling = childRoot;
-    }
-    prevSibling = childRoot;
-    
-    // yield 整个子树
-    yield childRoot;
-  }
-  
-  return fiber;
-}
-
-// 3. Diff 算法（Reconciliation - 协调）
-function reconcileChildren(
-  currentFiber: SimpleFiber | null,
-  newElements: any[]
-): { fiber: SimpleFiber; effects: string[] } | null {
-  const effects: string[] = [];
-  
-  if (newElements.length === 0) return null;
-  
-  let oldFiber = currentFiber?.child || null;
-  let prevSibling: SimpleFiber | null = null;
-  
-  let newFiber: SimpleFiber | null = null;
-  const firstChild: SimpleFiber | null = null;
-  
-  for (let i = 0; i < newElements.length; i++) {
-    const element = newElements[i];
-    
-    // 比较新旧节点
-    const sameType = oldFiber && oldFiber.type === element.type;
-    
-    if (sameType && oldFiber) {
-      // ✅ 更新：类型相同，复用节点
-      newFiber = new SimpleFiber(oldFiber.type, element.props);
-      newFiber.stateNode = oldFiber.stateNode;
-      newFiber.alternate = oldFiber;
-      newFiber.effectTag = 'UPDATE';
-      newFiber.oldProps = oldFiber.props;
-      newFiber.parent = currentFiber;
-      
-      effects.push(`🔄 UPDATE: <${newFiber.type}> props changed`);
-    } else {
-      // 新增节点
-      if (element) {
-        newFiber = new SimpleFiber(element.type, element.props);
-        newFiber.effectTag = 'PLACEMENT';
-        newFiber.parent = currentFiber;
-        
-        effects.push(`➕ PLACEMENT: <${newFiber.type}> new node`);
-      }
-      
-      // 删除旧节点
-      if (oldFiber) {
-        oldFiber.effectTag = 'DELETION';
-        effects.push(`❌ DELETION: <${oldFiber.type}> removed`);
-      }
-    }
-    
-    // 移动到下一个旧节点
-    if (oldFiber) {
-      oldFiber = oldFiber.sibling;
-    }
-    
-    // 建立链表关系
-    if (i === 0 && newFiber && currentFiber) {
-      currentFiber.child = newFiber;
-    } else if (prevSibling && newFiber) {
-      prevSibling.sibling = newFiber;
-    }
-    
-    if (newFiber) {
-      prevSibling = newFiber;
-    }
-  }
-  
-  // 删除剩余的旧节点
-  while (oldFiber) {
-    oldFiber.effectTag = 'DELETION';
-    effects.push(`❌ DELETION: <${oldFiber.type}> extra node removed`);
-    oldFiber = oldFiber.sibling;
-  }
-  
-  return firstChild ? { fiber: firstChild, effects } : null;
-}
-
-// 4. Fiber 树转换为 DOM
-function fiberToDOM(fiber: SimpleFiber): HTMLElement | Text {
-  let dom: HTMLElement | Text;
-  
-  if (fiber.type === 'text') {
-    dom = document.createTextNode(fiber.props.value || '');
-  } else {
-    dom = document.createElement(fiber.type);
-    
-    // 设置属性
-    Object.entries(fiber.props).forEach(([key, value]) => {
-      if (key === 'className') {
-        (dom as HTMLElement).className = value as string;
-      } else if (key === 'style' && typeof value === 'object') {
-        Object.assign((dom as HTMLElement).style, value);
-      } else if (key.startsWith('on')) {
-        // 事件监听
-        const eventName = key.substring(2).toLowerCase();
-        (dom as HTMLElement).addEventListener(eventName, value as EventListener);
-      } else if (key !== 'children' && key !== 'value') {
-        (dom as HTMLElement).setAttribute(key, String(value));
-      }
-    });
-  }
-  
-  fiber.stateNode = dom;
-  return dom;
-}
-
-// 5. 渲染 Fiber 树到实际 DOM
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function commitWork(fiber: SimpleFiber | null, container: HTMLElement) {
-  if (!fiber) return;
-  
-  // 创建或更新 DOM
-  if (fiber.effectTag === 'PLACEMENT' && fiber.stateNode) {
-    container.appendChild(fiber.stateNode);
-  } else if (fiber.effectTag === 'UPDATE' && fiber.stateNode) {
-    // 更新 DOM 属性
-    updateDOM(fiber.stateNode, fiber.oldProps, fiber.props);
-  } else if (fiber.effectTag === 'DELETION' && fiber.stateNode) {
-    container.removeChild(fiber.stateNode);
-  }
-  
-  // 递归处理子节点
-  if (fiber.child) {
-    const childContainer = fiber.stateNode as HTMLElement || container;
-    commitWork(fiber.child, childContainer);
-  }
-  
-  // 处理兄弟节点
-  if (fiber.sibling) {
-    commitWork(fiber.sibling, container);
-  }
-}
-
-// 6. 更新 DOM 属性
-function updateDOM(dom: HTMLElement | Text, oldProps: any, newProps: any) {
-  if (dom instanceof Text) {
-    if (oldProps.value !== newProps.value) {
-      dom.textContent = newProps.value;
-    }
-    return;
-  }
-  
-  const element = dom as HTMLElement;
-  
-  // 移除旧属性
-  Object.keys(oldProps).forEach(key => {
-    if (key !== 'children' && !(key in newProps)) {
-      if (key === 'className') {
-        element.className = '';
-      } else if (key.startsWith('on')) {
-        const eventName = key.substring(2).toLowerCase();
-        element.removeEventListener(eventName, oldProps[key]);
-      } else {
-        element.removeAttribute(key);
-      }
-    }
-  });
-  
-  // 设置新属性
-  Object.entries(newProps).forEach(([key, value]) => {
-    if (key === 'className') {
-      element.className = value as string;
-    } else if (key === 'style' && typeof value === 'object') {
-      Object.assign(element.style, value);
-    } else if (key.startsWith('on')) {
-      if (oldProps[key] !== value) {
-        const eventName = key.substring(2).toLowerCase();
-        if (oldProps[key]) {
-          element.removeEventListener(eventName, oldProps[key]);
-        }
-        element.addEventListener(eventName, value as EventListener);
-      }
-    } else if (key !== 'children') {
-      element.setAttribute(key, String(value));
-    }
-  });
-}
-
-// 7. 模拟工作循环（Work Loop）
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-class FiberScheduler {
-  private workInProgress: Generator | null = null;
-  private deadline: number = 0;
-  private taskQueue: Array<() => Generator> = [];
-  
-  // 每帧的时间片（毫秒）
-  private static FRAME_BUDGET = 16; // 约60fps
-
-  // 开始调度
-  scheduleWork(task: () => Generator) {
-    this.taskQueue.push(task);
-    this.requestIdleCallback();
-  }
-
-  // 模拟 requestIdleCallback
-  private requestIdleCallback() {
-    requestAnimationFrame((timestamp) => {
-      this.deadline = timestamp + FiberScheduler.FRAME_BUDGET;
-      this.workLoop();
-    });
-  }
-
-  // 工作循环
-  private workLoop() {
-    // 如果没有正在进行的工作，从队列中取一个
-    if (!this.workInProgress && this.taskQueue.length > 0) {
-      const task = this.taskQueue.shift();
-      if (task) {
-        this.workInProgress = task();
-      }
-    }
-
-    // 执行工作，直到时间片用完或工作完成
-    while (this.workInProgress && this.shouldYield() === false) {
-      const result = this.workInProgress.next();
-      if (result.done) {
-        this.workInProgress = null;
-        break;
-      }
-    }
-
-    // 如果还有工作，继续调度
-    if (this.workInProgress || this.taskQueue.length > 0) {
-      this.requestIdleCallback();
-    }
-  }
-
-  // 判断是否应该让出控制权
-  private shouldYield(): boolean {
-    return performance.now() >= this.deadline;
-  }
-}
-
-// 4. 优先级队列
-enum Priority {
-  IMMEDIATE = 1,    // 立即执行
-  USER_BLOCKING = 2, // 用户交互
-  NORMAL = 3,        // 普通渲染
-  LOW = 4,          // 低优先级
-  IDLE = 5          // 空闲时执行
-}
-
-interface Task {
-  id: number;
-  priority: Priority;
-  execute: () => void;
-  name: string;
-}
-
-class PriorityScheduler {
-  private tasks: Task[] = [];
-  private currentTask: Task | null = null;
-  private isRunning = false;
-
-  addTask(task: Task) {
-    this.tasks.push(task);
-    // 按优先级排序
-    this.tasks.sort((a, b) => a.priority - b.priority);
-    
-    if (!this.isRunning) {
-      this.schedule();
-    }
-  }
-
-  private schedule() {
-    if (this.tasks.length === 0) {
-      this.isRunning = false;
-      return;
-    }
-
-    this.isRunning = true;
-    this.currentTask = this.tasks.shift() || null;
-
-    if (this.currentTask) {
-      // 根据优先级选择调度方式
-      if (this.currentTask.priority === Priority.IMMEDIATE) {
-        this.currentTask.execute();
-        this.schedule();
-      } else {
-        requestAnimationFrame(() => {
-          if (this.currentTask) {
-            this.currentTask.execute();
-          }
-          this.schedule();
-        });
-      }
-    }
-  }
-
-  getCurrentTask(): Task | null {
-    return this.currentTask;
-  }
-
-  getPendingTasks(): Task[] {
-    return this.tasks;
-  }
-}
+import {
+  SimpleFiber,
+  Priority,
+  Task,
+  VirtualElement,
+  createFiberTree,
+  reconcileChildren,
+  createDOMTree,
+  PriorityScheduler,
+} from './fiber-architecture';
 
 const FiberArchitecture: React.FC = () => {
   const [fiberTree, setFiberTree] = useState<SimpleFiber | null>(null);
@@ -378,27 +17,19 @@ const FiberArchitecture: React.FC = () => {
   const [isBuilding, setIsBuilding] = useState(false);
   const [executedTasks, setExecutedTasks] = useState<string[]>([]);
   const schedulerRef = useRef(new PriorityScheduler());
-  
-  // 双缓冲机制相关状态
   const [currentTree, setCurrentTree] = useState<SimpleFiber | null>(null);
   const [workInProgressTree, setWorkInProgressTree] = useState<SimpleFiber | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
-  
-  // Diff 算法相关状态
   const [diffEffects, setDiffEffects] = useState<string[]>([]);
   const [isDiffing, setIsDiffing] = useState(false);
-  
-  // Fiber 到 DOM 转换相关
   const [domPreview, setDomPreview] = useState<string>('');
   const renderContainerRef = useRef<HTMLDivElement>(null);
 
-  // 演示1: 构建 Fiber 树
   const buildFiberTree = async () => {
     setIsBuilding(true);
     setBuildProgress([]);
     
-    // 定义一个虚拟 DOM 树
-    const virtualDOM = {
+    const virtualDOM: VirtualElement = {
       type: 'div',
       props: { id: 'root' },
       children: [
@@ -428,11 +59,9 @@ const FiberArchitecture: React.FC = () => {
     const progress: string[] = [];
     let rootFiber: SimpleFiber | null = null;
 
-    // 模拟可中断的构建过程
     const build = () => {
       const start = performance.now();
       
-      // 每帧最多执行5ms的工作
       while (performance.now() - start < 5) {
         const result = generator.next();
         
@@ -450,7 +79,6 @@ const FiberArchitecture: React.FC = () => {
         setBuildProgress([...progress]);
       }
 
-      // 让出控制权，在下一帧继续
       requestAnimationFrame(build);
     };
 
@@ -458,7 +86,6 @@ const FiberArchitecture: React.FC = () => {
     setFiberTree(rootFiber);
   };
 
-  // 演示2: 任务优先级调度
   const runPriorityDemo = () => {
     setExecutedTasks([]);
     const scheduler = schedulerRef.current;
@@ -506,18 +133,15 @@ const FiberArchitecture: React.FC = () => {
       },
     ];
 
-    // 随机顺序添加任务，但会按优先级执行
     tasks.sort(() => Math.random() - 0.5).forEach(task => {
       scheduler.addTask(task);
     });
   };
   
-  // 演示3: 双缓冲机制
   const demonstrateDoubleBuffering = () => {
     setIsSwapping(true);
     
-    // 创建初始 current 树
-    const oldVirtualDOM = {
+    const oldVirtualDOM: VirtualElement = {
       type: 'div',
       props: { id: 'app', className: 'old' },
       children: [
@@ -535,9 +159,8 @@ const FiberArchitecture: React.FC = () => {
     }
     setCurrentTree(oldRoot);
     
-    // 模拟更新：创建新的 workInProgress 树
     setTimeout(() => {
-      const newVirtualDOM = {
+      const newVirtualDOM: VirtualElement = {
         type: 'div',
         props: { id: 'app', className: 'new' },
         children: [
@@ -555,7 +178,6 @@ const FiberArchitecture: React.FC = () => {
         r = gen2.next();
       }
       
-      // 建立 alternate 关系
       if (oldRoot && newRoot) {
         oldRoot.alternate = newRoot;
         newRoot.alternate = oldRoot;
@@ -563,7 +185,6 @@ const FiberArchitecture: React.FC = () => {
       
       setWorkInProgressTree(newRoot);
       
-      // 2秒后交换树
       setTimeout(() => {
         setCurrentTree(newRoot);
         setWorkInProgressTree(null);
@@ -572,13 +193,11 @@ const FiberArchitecture: React.FC = () => {
     }, 1000);
   };
   
-  // 演示4: Diff 算法
   const demonstrateDiff = () => {
     setIsDiffing(true);
     setDiffEffects([]);
     
-    // 旧树
-    const oldVirtualDOM = {
+    const oldVirtualDOM: VirtualElement = {
       type: 'ul',
       props: { className: 'list' },
       children: [
@@ -598,9 +217,8 @@ const FiberArchitecture: React.FC = () => {
     
     setDiffEffects(['📌 旧树构建完成']);
     
-    // 新树（修改了第2项，删除了第3项，新增了第4项）
     setTimeout(() => {
-      const newChildren = [
+      const newChildren: VirtualElement[] = [
         { type: 'li', props: { key: '1' }, children: [{ type: 'text', props: { value: 'Item 1' }, children: [] }] },
         { type: 'li', props: { key: '2' }, children: [{ type: 'text', props: { value: 'Item 2 - Updated' }, children: [] }] },
         { type: 'li', props: { key: '4' }, children: [{ type: 'text', props: { value: 'Item 4 - New' }, children: [] }] },
@@ -623,9 +241,8 @@ const FiberArchitecture: React.FC = () => {
     }, 1000);
   };
   
-  // 演示5: Fiber 到 DOM 的转换
   const demonstrateFiberToDOM = () => {
-    const virtualDOM = {
+    const virtualDOM: VirtualElement = {
       type: 'div',
       props: { id: 'demo', className: 'demo-container', style: { padding: '10px', backgroundColor: '#f0f0f0' } },
       children: [
@@ -641,7 +258,6 @@ const FiberArchitecture: React.FC = () => {
       ],
     };
     
-    // 创建 Fiber 树
     const gen = createFiberTree(virtualDOM);
     let root: SimpleFiber | null = null;
     let r = gen.next();
@@ -650,39 +266,18 @@ const FiberArchitecture: React.FC = () => {
       r = gen.next();
     }
     
-    // 转换为 DOM
     if (root && renderContainerRef.current) {
       renderContainerRef.current.innerHTML = '';
       
       const domTree = createDOMTree(root);
       if (domTree) {
         renderContainerRef.current.appendChild(domTree);
-        
-        // 生成 HTML 预览
         const htmlString = domTree instanceof HTMLElement ? domTree.outerHTML : domTree.textContent || '';
         setDomPreview(htmlString);
       }
     }
   };
-  
-  // 辅助函数：递归创建 DOM 树
-  const createDOMTree = (fiber: SimpleFiber): HTMLElement | Text | null => {
-    const dom = fiberToDOM(fiber);
-    
-    // 处理子节点
-    let child = fiber.child;
-    while (child) {
-      const childDOM = createDOMTree(child);
-      if (childDOM && dom instanceof HTMLElement) {
-        dom.appendChild(childDOM);
-      }
-      child = child.sibling;
-    }
-    
-    return dom;
-  };
 
-  // 可视化 Fiber 树
   const renderFiberTree = (fiber: SimpleFiber | null, level: number = 0): JSX.Element[] => {
     if (!fiber) return [];
 
@@ -690,19 +285,17 @@ const FiberArchitecture: React.FC = () => {
     const indent = '　'.repeat(level);
     
     elements.push(
-      <div key={`${fiber.type}-${level}`} className="fiber-node" style={{ marginLeft: `${level * 20}px` }}>
+      <div key={`${fiber.type}-${level}-${Math.random()}`} className="fiber-node" style={{ marginLeft: `${level * 20}px` }}>
         {indent}
         <span className="fiber-type">{fiber.type}</span>
         <span className="fiber-props">{JSON.stringify(fiber.props).substring(0, 40)}</span>
       </div>
     );
 
-    // 渲染子节点
     if (fiber.child) {
       elements.push(...renderFiberTree(fiber.child, level + 1));
     }
 
-    // 渲染兄弟节点
     if (fiber.sibling) {
       elements.push(...renderFiberTree(fiber.sibling, level));
     }
@@ -712,11 +305,22 @@ const FiberArchitecture: React.FC = () => {
 
   return (
     <div className="fiber-architecture">
-      <h2>🏗️ React Fiber 架构演示</h2>
+      <h2>🏗️ React Fiber 架构演示（重构版）</h2>
       <p className="description">
         Fiber 架构使 React 能够将渲染工作分解成小单元，并能够暂停、恢复和优先级调度。
         这样可以让浏览器有时间处理用户输入等高优先级任务，避免页面卡顿。
       </p>
+      
+      <div className="info-box" style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '4px', border: '1px solid #2196f3' }}>
+        <h4>📦 代码已模块化重构</h4>
+        <p style={{ margin: '10px 0' }}>原文件已按逻辑拆分为以下模块：</p>
+        <ul style={{ marginLeft: '20px' }}>
+          <li><code>types/</code> - 类型定义</li>
+          <li><code>core/</code> - SimpleFiber 核心类</li>
+          <li><code>utils/</code> - Fiber 树构建、Diff 算法、DOM 转换工具</li>
+          <li><code>schedulers/</code> - 优先级调度器和 Fiber 调度器</li>
+        </ul>
+      </div>
 
       <div className="demo-section">
         <h3>1. Fiber 树的构建过程</h3>

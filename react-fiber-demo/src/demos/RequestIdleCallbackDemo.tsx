@@ -43,6 +43,7 @@ const RequestIdleCallbackDemo: React.FC = () => {
 
       // 在空闲时间内执行工作
       while (deadline.timeRemaining() > 0 && count < 100) {
+        // do work，when idle
         count++;
         setBasicProgress(count);
       }
