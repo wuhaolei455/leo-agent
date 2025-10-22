@@ -4,9 +4,11 @@ import FiberArchitecture from './demos/FiberArchitecture';
 import PriorityScheduling from './demos/PriorityScheduling';
 import RequestAnimationFrameDemo from './demos/RequestAnimationFrameDemo';
 import RequestIdleCallbackDemo from './demos/RequestIdleCallbackDemo';
+import BrowserRenderPipeline from './demos/BrowserRenderPipeline';
+import VirtualDOM from './demos/VirtualDOM';
 import './App.css';
 
-type Tab = 'intro' | 'generator' | 'raf' | 'ric' | 'fiber' | 'scheduling';
+type Tab = 'intro' | 'vdom' | 'generator' | 'raf' | 'ric' | 'fiber' | 'scheduling' | 'render';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('intro');
@@ -26,6 +28,12 @@ function App() {
           onClick={() => setActiveTab('intro')}
         >
           📖 介绍
+        </button>
+        <button
+          className={`tab-button ${activeTab === 'vdom' ? 'active' : ''}`}
+          onClick={() => setActiveTab('vdom')}
+        >
+          🌳 虚拟DOM
         </button>
         <button
           className={`tab-button ${activeTab === 'generator' ? 'active' : ''}`}
@@ -57,15 +65,23 @@ function App() {
         >
           🎯 优先级调度
         </button>
+        <button
+          className={`tab-button ${activeTab === 'render' ? 'active' : ''}`}
+          onClick={() => setActiveTab('render')}
+        >
+          🖥️ 浏览器渲染
+        </button>
       </nav>
 
       <main className="main-content">
         {activeTab === 'intro' && <IntroSection />}
+        {activeTab === 'vdom' && <VirtualDOM />}
         {activeTab === 'generator' && <GeneratorBasics />}
         {activeTab === 'raf' && <RequestAnimationFrameDemo />}
         {activeTab === 'ric' && <RequestIdleCallbackDemo />}
         {activeTab === 'fiber' && <FiberArchitecture />}
         {activeTab === 'scheduling' && <PriorityScheduling />}
+        {activeTab === 'render' && <BrowserRenderPipeline />}
       </main>
 
       <footer className="app-footer">

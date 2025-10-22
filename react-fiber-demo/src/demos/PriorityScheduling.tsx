@@ -26,14 +26,13 @@ interface ScheduledTask {
   endTime?: number;
 }
 
-// 时间切片调度器
+
 class TimeSliceScheduler {
   private taskQueue: ScheduledTask[] = [];
   private currentTask: ScheduledTask | null = null;
   private isScheduled = false;
-  private frameDeadline = 0;
   private static FRAME_TIME = 16; // 16ms ≈ 60fps
-  
+
   private onTaskUpdate: (task: ScheduledTask) => void;
   private onQueueUpdate: (queue: ScheduledTask[]) => void;
 
@@ -45,19 +44,17 @@ class TimeSliceScheduler {
     this.onQueueUpdate = onQueueUpdate;
   }
 
-  // 添加任务
   scheduleTask(task: ScheduledTask) {
     this.taskQueue.push(task);
     this.sortQueue();
     this.onQueueUpdate([...this.taskQueue]);
-    
+
     if (!this.isScheduled) {
       this.isScheduled = true;
       this.scheduleWork();
     }
   }
 
-  // 按优先级排序队列
   private sortQueue() {
     this.taskQueue.sort((a, b) => {
       if (a.priority !== b.priority) {
@@ -67,69 +64,65 @@ class TimeSliceScheduler {
     });
   }
 
-  // 调度工作
   private scheduleWork() {
-    requestAnimationFrame((timestamp) => {
-      this.frameDeadline = timestamp + TimeSliceScheduler.FRAME_TIME;
-      this.workLoop(timestamp);
-    });
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(
+        (deadline) => this.workLoop(deadline),
+        { timeout: TimeSliceScheduler.FRAME_TIME }
+      );
+    } else {
+      requestAnimationFrame((timestamp) => {
+        const fakeDeadline = {
+          timeRemaining: () => Math.max(0, TimeSliceScheduler.FRAME_TIME - (performance.now() % TimeSliceScheduler.FRAME_TIME)),
+          didTimeout: false,
+        };
+        this.workLoop(fakeDeadline as IdleDeadline);
+      });
+    }
   }
 
-  // 工作循环
-  private workLoop(currentTime: number) {
-    // 如果当前没有任务，从队列中取一个
+  private workLoop(deadline: IdleDeadline) {
     if (!this.currentTask && this.taskQueue.length > 0) {
       this.currentTask = this.taskQueue.shift()!;
       this.currentTask.status = 'running';
-      this.currentTask.startTime = currentTime;
+      this.currentTask.startTime = performance.now();
       this.onTaskUpdate({ ...this.currentTask });
       this.onQueueUpdate([...this.taskQueue]);
     }
 
-    // 执行当前任务
     if (this.currentTask) {
       const task = this.currentTask;
-      
-      // 如果是立即执行的任务，不考虑时间片
+
       if (task.priority === TaskPriority.Immediate) {
-        this.executeTask(task, currentTime);
+        this.executeTask(task);
       } else {
-        // 检查是否还有剩余时间
-        if (this.shouldYield()) {
-          // 检查是否有更高优先级的任务
+        if (deadline.timeRemaining() <= 0) {
           if (this.hasHigherPriorityTask(task)) {
             task.status = 'interrupted';
             this.onTaskUpdate({ ...task });
-            // 将当前任务放回队列
             this.taskQueue.unshift(task);
             this.sortQueue();
             this.currentTask = null;
           }
-          // 继续调度
           this.scheduleWork();
+          return;
         } else {
-          // 还有时间，继续执行
-          this.executeTask(task, currentTime);
+          this.executeTask(task);
         }
       }
     } else if (this.taskQueue.length > 0) {
-      // 还有任务，继续调度
       this.scheduleWork();
     } else {
-      // 没有任务了
       this.isScheduled = false;
     }
   }
 
-  // 执行任务
-  private executeTask(task: ScheduledTask, currentTime: number) {
-    // 模拟任务执行
+  private executeTask(task: ScheduledTask) {
     setTimeout(() => {
       task.status = 'completed';
-      task.endTime = currentTime + task.duration;
+      task.endTime = performance.now();
       this.onTaskUpdate({ ...task });
       this.currentTask = null;
-      
       if (this.taskQueue.length > 0) {
         this.scheduleWork();
       } else {
@@ -138,18 +131,10 @@ class TimeSliceScheduler {
     }, task.duration);
   }
 
-  // 是否应该让出控制权
-  private shouldYield(): boolean {
-    return performance.now() >= this.frameDeadline;
-  }
-
-  // 是否有更高优先级的任务
   private hasHigherPriorityTask(currentTask: ScheduledTask): boolean {
-    return this.taskQueue.length > 0 && 
-           this.taskQueue[0].priority < currentTask.priority;
+    return this.taskQueue.length > 0 && this.taskQueue[0].priority < currentTask.priority;
   }
 
-  // 清空队列
   clear() {
     this.taskQueue = [];
     this.currentTask = null;
@@ -157,6 +142,7 @@ class TimeSliceScheduler {
     this.onQueueUpdate([]);
   }
 }
+
 
 const PriorityScheduling: React.FC = () => {
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);

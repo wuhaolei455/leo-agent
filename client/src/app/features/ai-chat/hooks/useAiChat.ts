@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { startTransition, useCallback, useRef } from 'react'
 
 import { useChatContext } from '../context/ChatContext'
 import { streamChat } from '../services/streamService'
@@ -43,26 +43,32 @@ export function useAiChat() {
       const cancelFn = await streamChat(content, {
         onMessage: (chunk: string) => {
           accumulatedContent += chunk
-          dispatch({
-            type: 'UPDATE_MESSAGE',
-            payload: { id: assistantMessageId, content: accumulatedContent }
+          startTransition(() => {
+            dispatch({
+              type: 'UPDATE_MESSAGE',
+              payload: { id: assistantMessageId, content: accumulatedContent }
+            })
           })
         },
         onComplete: () => {
-          dispatch({
-            type: 'UPDATE_MESSAGE_STATUS',
-            payload: { id: assistantMessageId, status: 'idle' }
+          startTransition(() => {
+            dispatch({
+              type: 'UPDATE_MESSAGE_STATUS',
+              payload: { id: assistantMessageId, status: 'idle' }
+            })
+            dispatch({ type: 'SET_STREAMING', payload: false })
           })
-          dispatch({ type: 'SET_STREAMING', payload: false })
           cancelStreamRef.current = null
         },
         onError: (error: Error) => {
-          dispatch({
-            type: 'UPDATE_MESSAGE_STATUS',
-            payload: { id: assistantMessageId, status: 'error' }
+          startTransition(() => {
+            dispatch({
+              type: 'UPDATE_MESSAGE_STATUS',
+              payload: { id: assistantMessageId, status: 'error' }
+            })
+            dispatch({ type: 'SET_ERROR', payload: error.message })
+            dispatch({ type: 'SET_STREAMING', payload: false })
           })
-          dispatch({ type: 'SET_ERROR', payload: error.message })
-          dispatch({ type: 'SET_STREAMING', payload: false })
           cancelStreamRef.current = null
         }
       })

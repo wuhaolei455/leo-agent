@@ -29,7 +29,8 @@ interface UseAiChatReturn {
     copy: (content: string) => void
     like: (msg: IMessage) => void
     dislike: (msg: IMessage) => void
-  }
+  },
+  setRemainTimes: (times: number) => void
 }
 
 export const useAiChat = (): UseAiChatReturn => {
@@ -154,6 +155,7 @@ export const useAiChat = (): UseAiChatReturn => {
     playHelloAudio,
     getRecommend,
     getRemainTimes,
+    setRemainTimes,
     operationFuncs
   }
 }

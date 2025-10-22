@@ -31,7 +31,7 @@ export function MessageComposer({
     }
   }, [onSend])
 
-  const isDisabled = isLoading || remainTimes <= 0
+  const isDisabled = remainTimes <= 0
 
   return (
     <form className="message-composer" onSubmit={handleSubmit}>
