@@ -1,7 +1,5 @@
 import { useVoiceChat } from '../hooks/useVoiceChat'
-
 import { VoiceChatStatusBadge } from './VoiceChatStatusBadge'
-
 import './VoiceChatPanel.css'
 
 export function VoiceChatPanel() {

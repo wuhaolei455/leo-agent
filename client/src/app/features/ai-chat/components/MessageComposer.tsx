@@ -38,7 +38,7 @@ export function MessageComposer({
       <textarea
         className="message-composer__input"
         value={userInput}
-        placeholder={remainTimes > 0 ? '输入你的问题（Enter发送，Shift+Enter换行）' : '今日额度已用完'}
+        placeholder={remainTimes > 0 ? '输入你的问题' : '今日额度已用完'}
         disabled={isDisabled}
         rows={1}
         onChange={event => setUserInput(event.target.value)}
