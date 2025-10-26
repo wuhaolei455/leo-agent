@@ -97,50 +97,102 @@
   color: #999;
 }
 
-.voice-call-page .voice-wave-container {
+/* 提示文字 */
+.voice-call-page .hint-text {
   position: fixed;
-  right: 0;
-  bottom: 132px;
-  left: 0;
-  margin: 0 auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  bottom: 220px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease;
+  z-index: 4;
 }
 
-.voice-call-page .listening {
-  width: 279px;
-  height: 40px;
-  object-fit: contain;
+.voice-call-page .interrupt-hint,
+.voice-call-page .error-hint {
+  position: fixed;
+  bottom: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: #667eea;
+  font-weight: 500;
+  padding: 8px 16px;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 20px;
+  animation: pulse-hint 2s ease-in-out infinite;
+  z-index: 10;
 }
 
-.voice-call-page .hang-up {
+.voice-call-page .error-hint {
+  color: #f5576c;
+  background: rgba(245, 87, 108, 0.1);
+}
+
+@keyframes pulse-hint {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 控制按钮区域 */
+.voice-call-page .controls {
   position: fixed;
-  right: 0;
   bottom: 16px;
-  left: 0;
-  margin: 0 auto;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  z-index: 10;
+}
+
+.voice-call-page .hang-up-button {
   width: 64px;
   height: 64px;
+  border-radius: 50%;
+  background: #f5576c;
+  border: none;
   cursor: pointer;
-  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.voice-call-page .hang-up:hover {
+.voice-call-page .hang-up-button:hover {
   transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(245, 87, 108, 0.4);
 }
 
-.voice-call-page .hang-up:active {
+.voice-call-page .hang-up-button:active {
   transform: scale(0.95);
+}
+
+.voice-call-page .hang-up-icon {
+  width: 32px;
+  height: 32px;
 }
 
 /* 适配安全区域 */
 @supports (padding: max(0px)) {
-  .voice-call-page .voice-wave-container {
-    bottom: max(132px, calc(env(safe-area-inset-bottom) + 132px));
+  .voice-call-page .hint-text {
+    bottom: max(220px, calc(env(safe-area-inset-bottom) + 220px));
   }
 
-  .voice-call-page .hang-up {
+  .voice-call-page .interrupt-hint,
+  .voice-call-page .error-hint {
+    bottom: max(200px, calc(env(safe-area-inset-bottom) + 200px));
+  }
+
+  .voice-call-page .controls {
     bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px));
   }
 }
@@ -167,14 +219,25 @@
     font-size: 14px;
   }
   
-  .voice-call-page .listening {
-    width: 240px;
-    height: 34px;
+  .voice-call-page .hint-text {
+    font-size: 13px;
+    bottom: 200px;
+  }
+
+  .voice-call-page .interrupt-hint,
+  .voice-call-page .error-hint {
+    font-size: 12px;
+    bottom: 180px;
   }
   
-  .voice-call-page .hang-up {
+  .voice-call-page .hang-up-button {
     width: 56px;
     height: 56px;
+  }
+
+  .voice-call-page .hang-up-icon {
+    width: 28px;
+    height: 28px;
   }
 }
 

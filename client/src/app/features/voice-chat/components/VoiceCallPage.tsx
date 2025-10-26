@@ -1,16 +1,18 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VoiceChatStatus } from '../../../../types/voice-chat';
 import { useAudioRecorder } from '../../../../hooks/useAudioRecorder';
 import { Animation } from './Animation';
+import { VolumeVisualizer } from './VolumeVisualizer';
 import './VoiceCallPage.css';
 
-const LISTENING_SVG = '/assets/listening.svg';
 const HANG_UP_SVG = '/assets/hang-up.svg';
 
 export function VoiceCallPage() {
   const navigate = useNavigate();
   const [voiceChatStatus, setVoiceChatStatus] = useState<VoiceChatStatus>(VoiceChatStatus.CALLING);
+  const speakingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const listeningStartedRef = useRef<boolean>(false);
   
   const { 
     startListening, 
@@ -18,6 +20,11 @@ export function VoiceCallPage() {
     isConnected, 
     response,
     audioStatus,
+    currentVolume,
+    error,
+    analyser,
+    reconnect,
+    clearResponse,
   } = useAudioRecorder({
     serverUrl: 'http://localhost:3002',
     silenceThreshold: 1500,
@@ -26,63 +33,117 @@ export function VoiceCallPage() {
     enableWebSocket: true,
   });
 
-  // 根据连接状态更新 UI
+  // 连接状态管理
   useEffect(() => {
     if (!isConnected) {
-      setVoiceChatStatus(VoiceChatStatus.CALLING);
-    } else {
-      const timer = setTimeout(() => {
+      setVoiceChatStatus(error ? VoiceChatStatus.SERVER_ERROR : VoiceChatStatus.CALLING);
+      listeningStartedRef.current = false;
+    } else if (!listeningStartedRef.current) {
+      // 连接成功后的欢迎流程
+      const welcomeTimer = setTimeout(() => {
         setVoiceChatStatus(VoiceChatStatus.WELCOME);
-        setTimeout(() => {
+        
+        const listeningTimer = setTimeout(() => {
           setVoiceChatStatus(VoiceChatStatus.LISTENING);
           startListening();
-        }, 2000);
-      }, 500);
-      return () => clearTimeout(timer);
+          listeningStartedRef.current = true;
+        }, 1500);
+        
+        return () => clearTimeout(listeningTimer);
+      }, 300);
+      
+      return () => clearTimeout(welcomeTimer);
     }
-  }, [isConnected, startListening]);
+  }, [isConnected, error, startListening]);
 
-  // 根据录音状态更新 UI
+  // 录音状态反馈
   useEffect(() => {
-    if (audioStatus === 'recording') {
+    if (audioStatus === 'recording' && voiceChatStatus !== VoiceChatStatus.LISTENING) {
       setVoiceChatStatus(VoiceChatStatus.LISTENING);
     }
-  }, [audioStatus]);
+  }, [audioStatus, voiceChatStatus]);
 
-  // 收到响应后显示回答状态
+  // 响应处理 - 优化状态转换
   useEffect(() => {
     if (response) {
+      // 清除之前的说话定时器
+      if (speakingTimeoutRef.current) {
+        clearTimeout(speakingTimeoutRef.current);
+      }
+
+      // 快速切换到思考状态
       setVoiceChatStatus(VoiceChatStatus.THINKING);
-      setTimeout(() => {
+      
+      // 短暂思考后开始说话
+      const thinkingTimer = setTimeout(() => {
         setVoiceChatStatus(VoiceChatStatus.SPEAKING);
-        // 模拟说话完成后回到监听状态
-        setTimeout(() => {
+        
+        // 根据响应长度动态计算说话时间
+        const speakingDuration = response.duration || Math.max(2000, response.text.length * 50);
+        
+        speakingTimeoutRef.current = setTimeout(() => {
           setVoiceChatStatus(VoiceChatStatus.LISTENING);
-        }, 3000);
-      }, 500);
+          clearResponse(); // 清除响应
+        }, speakingDuration);
+      }, 300);
+
+      return () => {
+        clearTimeout(thinkingTimer);
+        if (speakingTimeoutRef.current) {
+          clearTimeout(speakingTimeoutRef.current);
+        }
+      };
     }
-  }, [response]);
+  }, [response, clearResponse]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (speakingTimeoutRef.current) {
+        clearTimeout(speakingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const hangUp = useCallback(() => {
     stopListening();
+    if (speakingTimeoutRef.current) {
+      clearTimeout(speakingTimeoutRef.current);
+    }
     navigate('/ai-chat');
   }, [navigate, stopListening]);
 
-  const breakChat = useCallback(() => {
+  // 打断当前对话，立即回到监听状态
+  const interruptAndListen = useCallback(() => {
+    if (speakingTimeoutRef.current) {
+      clearTimeout(speakingTimeoutRef.current);
+    }
+    clearResponse();
     setVoiceChatStatus(VoiceChatStatus.LISTENING);
-    startListening();
-  }, [startListening]);
+    if (!listeningStartedRef.current) {
+      startListening();
+      listeningStartedRef.current = true;
+    }
+  }, [startListening, clearResponse]);
+
+  // 重新连接
+  const handleReconnect = useCallback(() => {
+    setVoiceChatStatus(VoiceChatStatus.RECONECTING);
+    reconnect();
+  }, [reconnect]);
 
   const handleScreenClick = useCallback(() => {
+    // 在欢迎、思考、说话状态时可以打断
     if ([VoiceChatStatus.WELCOME, VoiceChatStatus.THINKING, VoiceChatStatus.SPEAKING].includes(voiceChatStatus)) {
-      breakChat();
+      interruptAndListen();
     }
-    if (voiceChatStatus === VoiceChatStatus.SERVER_ERROR) {
-      setVoiceChatStatus(VoiceChatStatus.RECONECTING);
+    // 错误状态时重连
+    else if (voiceChatStatus === VoiceChatStatus.SERVER_ERROR) {
+      handleReconnect();
     }
-  }, [voiceChatStatus, breakChat]);
+  }, [voiceChatStatus, interruptAndListen, handleReconnect]);
 
-  const showVoiceWave = voiceChatStatus === VoiceChatStatus.LISTENING;
+  const showVolumeVisualizer = voiceChatStatus === VoiceChatStatus.LISTENING && audioStatus === 'recording';
 
   return (
     <div className="voice-call-page" onClick={handleScreenClick}>
@@ -90,36 +151,60 @@ export function VoiceCallPage() {
         <div className="title">AI助手</div>
         <div className="connection-status">
           <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
-          <span className="status-text">{isConnected ? '已连接' : '连接中...'}</span>
+          <span className="status-text">
+            {error ? '连接失败' : isConnected ? '已连接' : '连接中...'}
+          </span>
         </div>
       </div>
       
-      <Animation status={voiceChatStatus} />
+      <Animation status={voiceChatStatus} volume={currentVolume} />
       
-      {response && (
+      {response && voiceChatStatus !== VoiceChatStatus.LISTENING && (
         <div className="response-bubble">
           <p className="response-text">{response.text}</p>
           <span className="response-time">
-            {new Date(response.timestamp).toLocaleTimeString('zh-CN')}
+            {new Date(response.timestamp).toLocaleTimeString('zh-CN', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            })}
           </span>
         </div>
       )}
       
-      {showVoiceWave && (
-        <div className="voice-wave-container">
-          <img className="listening" src={LISTENING_SVG} alt="listening" />
+      {/* 实时音量可视化 */}
+      <VolumeVisualizer analyser={analyser} isActive={showVolumeVisualizer} />
+      
+      {/* 提示文字 */}
+      {voiceChatStatus === VoiceChatStatus.LISTENING && (
+        <div className="hint-text">
+          {audioStatus === 'recording' ? '正在录音...' : '请说话'}
         </div>
       )}
       
-      <img 
-        src={HANG_UP_SVG}
-        alt="hang up" 
-        className="hang-up"
-        onClick={(e) => {
-          e.stopPropagation();
-          hangUp();
-        }}
-      />
+      {[VoiceChatStatus.THINKING, VoiceChatStatus.SPEAKING].includes(voiceChatStatus) && (
+        <div className="interrupt-hint">
+          点击屏幕可以打断
+        </div>
+      )}
+      
+      {voiceChatStatus === VoiceChatStatus.SERVER_ERROR && (
+        <div className="error-hint">
+          连接失败，点击屏幕重试
+        </div>
+      )}
+      
+      <div className="controls">
+        <button 
+          className="hang-up-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            hangUp();
+          }}
+        >
+          <img src={HANG_UP_SVG} alt="hang up" className="hang-up-icon" />
+        </button>
+      </div>
     </div>
   );
 }

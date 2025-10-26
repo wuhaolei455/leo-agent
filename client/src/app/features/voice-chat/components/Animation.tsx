@@ -1,11 +1,14 @@
 import { VoiceChatStatus } from '../../../../types/voice-chat';
+import { useEffect, useRef } from 'react';
 import './Animation.css';
 
 interface AnimationProps {
   status: VoiceChatStatus;
+  volume?: number;
 }
 
-export function Animation({ status }: AnimationProps) {
+export function Animation({ status, volume = 0 }: AnimationProps) {
+  const circleRef = useRef<HTMLDivElement>(null);
   const getStatusText = () => {
     switch (status) {
       case VoiceChatStatus.CALLING:
@@ -48,9 +51,29 @@ export function Animation({ status }: AnimationProps) {
     }
   };
 
+  // 根据音量调整动画强度
+  useEffect(() => {
+    if (circleRef.current && status === VoiceChatStatus.LISTENING && volume > 0) {
+      const normalizedVolume = Math.min(volume / 10, 1); // 归一化到 0-1
+      const scale = 1 + normalizedVolume * 0.15; // 1.0 到 1.15 的缩放
+      const shadowIntensity = 20 + normalizedVolume * 40; // 20px 到 60px 的阴影
+      
+      circleRef.current.style.transform = `scale(${scale})`;
+      circleRef.current.style.boxShadow = `0 0 ${shadowIntensity}px rgba(102, 126, 234, ${0.3 + normalizedVolume * 0.4})`;
+      circleRef.current.style.transition = 'transform 0.1s ease-out, box-shadow 0.1s ease-out';
+    } else if (circleRef.current) {
+      circleRef.current.style.transform = '';
+      circleRef.current.style.boxShadow = '';
+      circleRef.current.style.transition = '';
+    }
+  }, [volume, status]);
+
   return (
     <div className="animation-container">
-      <div className={`animation-circle ${getAnimationClass()}`}>
+      <div 
+        ref={circleRef}
+        className={`animation-circle ${getAnimationClass()}`}
+      >
         <div className="animation-inner-circle" />
       </div>
       <div className="animation-status-text">{getStatusText()}</div>
