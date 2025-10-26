@@ -1,19 +1,76 @@
 import Recorder from 'js-audio-recorder';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { RecorderStatus } from '../types/voice-chat';
 
-export const useAudioRecorder = () => {
+interface AudioRecorderOptions {
+  serverUrl?: string;
+  silenceThreshold?: number;
+  volumeThreshold?: number;
+  chunkInterval?: number;
+  enableWebSocket?: boolean;
+}
+
+interface AudioResponse {
+  type: string;
+  text: string;
+  timestamp: string;
+}
+
+export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
+    const {
+        serverUrl = 'http://localhost:3002',
+        silenceThreshold = 1500,
+        volumeThreshold = 1.5,
+        chunkInterval = 500,
+        enableWebSocket = true,
+    } = options;
+
     const recorderRef = useRef<Recorder | null>(null);
     const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const vadIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const sendIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isListeningRef = useRef<boolean>(false);
     const isRecordingRef = useRef<boolean>(false);
+    const socketRef = useRef<Socket | null>(null);
+    const lastVoiceTimeRef = useRef<number>(0);
     
     const [audioStatus, setAudioStatus] = useState<RecorderStatus>(RecorderStatus.IDLE);
+    const [isConnected, setIsConnected] = useState(false);
+    const [response, setResponse] = useState<AudioResponse | null>(null);
 
+    // 初始化 WebSocket 连接
+    useEffect(() => {
+        if (!enableWebSocket) return;
+
+        socketRef.current = io(serverUrl);
+
+        socketRef.current.on('connect', () => {
+            console.log('WebSocket 连接成功');
+            setIsConnected(true);
+        });
+
+        socketRef.current.on('disconnect', () => {
+            console.log('WebSocket 断开连接');
+            setIsConnected(false);
+        });
+
+        socketRef.current.on('audio-response', (data: AudioResponse) => {
+            console.log('收到服务器响应:', data);
+            setResponse(data);
+        });
+
+        return () => {
+            if (socketRef.current) {
+                socketRef.current.disconnect();
+            }
+        };
+    }, [serverUrl, enableWebSocket]);
+
+    // 初始化录音器
     useEffect(() => {
         recorderRef.current = new Recorder({
             sampleBits: 16,
@@ -24,6 +81,7 @@ export const useAudioRecorder = () => {
         return () => {
             if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
             if (vadIntervalRef.current) clearInterval(vadIntervalRef.current);
+            if (sendIntervalRef.current) clearInterval(sendIntervalRef.current);
             if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
             if (audioContextRef.current) audioContextRef.current.close();
             if (recorderRef.current) {
@@ -34,6 +92,23 @@ export const useAudioRecorder = () => {
         }
     }, []);
 
+    // 发送音频数据到服务器
+    const sendAudioData = useCallback(() => {
+        if (!recorderRef.current || !enableWebSocket || !socketRef.current?.connected) return;
+
+        try {
+            const pcmData = recorderRef.current.getPCMBlob();
+            if (pcmData && pcmData.size > 0) {
+                pcmData.arrayBuffer().then((arrayBuffer: ArrayBuffer) => {
+                    socketRef.current?.emit('audio-stream', arrayBuffer);
+                    console.log(`发送音频数据: ${arrayBuffer.byteLength} bytes`);
+                });
+            }
+        } catch (error) {
+            console.error('发送音频数据失败:', error);
+        }
+    }, [enableWebSocket]);
+
     const stopRecording = useCallback(() => {
         if (!recorderRef.current || !isRecordingRef.current) return;
         
@@ -41,6 +116,16 @@ export const useAudioRecorder = () => {
         if (silenceTimerRef.current) {
             clearTimeout(silenceTimerRef.current);
             silenceTimerRef.current = null;
+        }
+
+        if (sendIntervalRef.current) {
+            clearInterval(sendIntervalRef.current);
+            sendIntervalRef.current = null;
+        }
+
+        // 发送最后一块音频数据
+        if (enableWebSocket) {
+            sendAudioData();
         }
         
         recorderRef.current.stop();
@@ -53,33 +138,42 @@ export const useAudioRecorder = () => {
                 url: URL.createObjectURL(wavBlob)
             });
         }
-        
-        setAudioStatus(isListeningRef.current ? RecorderStatus.IDLE : RecorderStatus.STOPPED);
-    }, []);
 
-    const startRecording = useCallback(async () => {
-        if (!recorderRef.current) return;
-        
-        if (silenceTimerRef.current) {
-            clearTimeout(silenceTimerRef.current);
+        if (enableWebSocket && socketRef.current) {
+            socketRef.current.emit('stop-recording');
         }
         
-        silenceTimerRef.current = setTimeout(() => stopRecording(), 3000);
-        
-        if (isRecordingRef.current) return;
+        setAudioStatus(isListeningRef.current ? RecorderStatus.IDLE : RecorderStatus.STOPPED);
+    }, [enableWebSocket, sendAudioData]);
+
+    const startRecording = useCallback(async () => {
+        if (!recorderRef.current || isRecordingRef.current) return;
         
         try {
             isRecordingRef.current = true;
             await recorderRef.current.start();
             setAudioStatus(RecorderStatus.RECORDING);
+
+            if (enableWebSocket && socketRef.current) {
+                socketRef.current.emit('start-recording');
+            }
+
+            // 定期发送音频数据
+            if (enableWebSocket) {
+                sendIntervalRef.current = setInterval(() => {
+                    sendAudioData();
+                }, chunkInterval);
+            }
+
+            console.log('开始录音' + (enableWebSocket ? '和流式传输' : ''));
         } catch (error) {
             console.error('录音失败:', error);
             isRecordingRef.current = false;
         }
-    }, [stopRecording]);
+    }, [enableWebSocket, sendAudioData, chunkInterval]);
 
-    const detectVoiceActivity = useCallback((): boolean => {
-        if (!analyserRef.current) return false;
+    const detectVoiceActivity = useCallback((): number => {
+        if (!analyserRef.current) return 0;
         
         const bufferLength = analyserRef.current.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
@@ -92,7 +186,7 @@ export const useAudioRecorder = () => {
         }
         const volume = Math.sqrt(sum / bufferLength) * 100;
         
-        return volume > 1.5;
+        return volume;
     }, []);
 
     const startListening = useCallback(async () => {
@@ -111,15 +205,35 @@ export const useAudioRecorder = () => {
             setAudioStatus(RecorderStatus.IDLE);
             
             vadIntervalRef.current = setInterval(() => {
-                if (isListeningRef.current && !isRecordingRef.current && detectVoiceActivity()) {
-                    startRecording();
+                const volume = detectVoiceActivity();
+                const now = Date.now();
+
+                if (volume > volumeThreshold) {
+                    // 检测到声音
+                    lastVoiceTimeRef.current = now;
+
+                    // 如果还没开始录音，则开始录音
+                    if (isListeningRef.current && !isRecordingRef.current) {
+                        startRecording();
+                    }
+                } else {
+                    // 静音
+                    if (lastVoiceTimeRef.current > 0 && isRecordingRef.current) {
+                        const silence = now - lastVoiceTimeRef.current;
+
+                        // 如果静音时间超过阈值，停止录音
+                        if (silence > silenceThreshold) {
+                            stopRecording();
+                            lastVoiceTimeRef.current = 0;
+                        }
+                    }
                 }
             }, 100);
         } catch (error) {
             console.error('启动监听失败:', error);
             alert('无法访问麦克风，请确保已授予麦克风权限');
         }
-    }, [detectVoiceActivity, startRecording]);
+    }, [detectVoiceActivity, startRecording, volumeThreshold, silenceThreshold, stopRecording]);
 
     const stopListening = useCallback(() => {
         isListeningRef.current = false;
@@ -137,6 +251,8 @@ export const useAudioRecorder = () => {
 
     return {
         audioStatus,
+        isConnected,
+        response,
         startListening,
         stopListening,
         getRecordingData,

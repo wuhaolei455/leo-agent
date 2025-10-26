@@ -12,18 +12,56 @@ export function VoiceCallPage() {
   const navigate = useNavigate();
   const [voiceChatStatus, setVoiceChatStatus] = useState<VoiceChatStatus>(VoiceChatStatus.CALLING);
   
-  const { startListening, stopListening } = useAudioRecorder();
+  const { 
+    startListening, 
+    stopListening, 
+    isConnected, 
+    response,
+    audioStatus,
+  } = useAudioRecorder({
+    serverUrl: 'http://localhost:3002',
+    silenceThreshold: 1500,
+    volumeThreshold: 1.5,
+    chunkInterval: 500,
+    enableWebSocket: true,
+  });
 
+  // 根据连接状态更新 UI
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setVoiceChatStatus(VoiceChatStatus.WELCOME);
+    if (!isConnected) {
+      setVoiceChatStatus(VoiceChatStatus.CALLING);
+    } else {
+      const timer = setTimeout(() => {
+        setVoiceChatStatus(VoiceChatStatus.WELCOME);
+        setTimeout(() => {
+          setVoiceChatStatus(VoiceChatStatus.LISTENING);
+          startListening();
+        }, 2000);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isConnected, startListening]);
+
+  // 根据录音状态更新 UI
+  useEffect(() => {
+    if (audioStatus === 'recording') {
+      setVoiceChatStatus(VoiceChatStatus.LISTENING);
+    }
+  }, [audioStatus]);
+
+  // 收到响应后显示回答状态
+  useEffect(() => {
+    if (response) {
+      setVoiceChatStatus(VoiceChatStatus.THINKING);
       setTimeout(() => {
-        setVoiceChatStatus(VoiceChatStatus.LISTENING);
-        startListening();
-      }, 2000);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [startListening]);
+        setVoiceChatStatus(VoiceChatStatus.SPEAKING);
+        // 模拟说话完成后回到监听状态
+        setTimeout(() => {
+          setVoiceChatStatus(VoiceChatStatus.LISTENING);
+        }, 3000);
+      }, 500);
+    }
+  }, [response]);
 
   const hangUp = useCallback(() => {
     stopListening();
@@ -48,9 +86,24 @@ export function VoiceCallPage() {
 
   return (
     <div className="voice-call-page" onClick={handleScreenClick}>
-      <div className="title">AI助手</div>
+      <div className="header">
+        <div className="title">AI助手</div>
+        <div className="connection-status">
+          <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+          <span className="status-text">{isConnected ? '已连接' : '连接中...'}</span>
+        </div>
+      </div>
       
       <Animation status={voiceChatStatus} />
+      
+      {response && (
+        <div className="response-bubble">
+          <p className="response-text">{response.text}</p>
+          <span className="response-time">
+            {new Date(response.timestamp).toLocaleTimeString('zh-CN')}
+          </span>
+        </div>
+      )}
       
       {showVoiceWave && (
         <div className="voice-wave-container">
