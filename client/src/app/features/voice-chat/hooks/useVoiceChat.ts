@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-
 import { VoiceChatStatus } from '../types'
+import { useNavigate } from 'react-router-dom'
 
 interface UseVoiceChatReturn {
   voiceChatStatus: VoiceChatStatus
@@ -9,6 +9,7 @@ interface UseVoiceChatReturn {
 
 export function useVoiceChat(): UseVoiceChatReturn {
   const [voiceChatStatus, setVoiceChatStatus] = useState<VoiceChatStatus>(VoiceChatStatus.WELCOME)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -19,6 +20,7 @@ export function useVoiceChat(): UseVoiceChatReturn {
 
   const hangUp = () => {
     setVoiceChatStatus(VoiceChatStatus.WELCOME)
+    navigate(-1)
   }
 
   return {

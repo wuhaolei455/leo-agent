@@ -1,0 +1,217 @@
+.audio-recorder-panel {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  color: white;
+}
+
+.recorder-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.recorder-header h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.recorder-header p {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.recorder-status {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.status-dot.recording {
+  background: #ff4444;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-dot.paused {
+  background: #ffa500;
+}
+
+.status-dot.stopped {
+  background: #4caf50;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.recorder-duration {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.duration-display {
+  font-size: 48px;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 4px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.recorder-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-start {
+  background: #4caf50;
+  color: white;
+}
+
+.btn-pause {
+  background: #ffa500;
+  color: white;
+}
+
+.btn-resume {
+  background: #2196f3;
+  color: white;
+}
+
+.btn-stop {
+  background: #f44336;
+  color: white;
+}
+
+.btn-play {
+  background: #9c27b0;
+  color: white;
+}
+
+.btn-download {
+  background: #00bcd4;
+  color: white;
+}
+
+.btn-reset {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.recorder-audio-player {
+  margin-top: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+}
+
+.recorder-audio-player h3 {
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.recorder-audio-player audio {
+  width: 100%;
+  border-radius: 10px;
+  outline: none;
+}
+
+.recorder-info {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.6;
+  backdrop-filter: blur(10px);
+}
+
+.recorder-info ul {
+  margin: 10px 0 0 20px;
+  padding: 0;
+}
+
+.recorder-info li {
+  margin-bottom: 5px;
+}
+
+@media (max-width: 600px) {
+  .audio-recorder-panel {
+    padding: 20px;
+  }
+
+  .recorder-header h2 {
+    font-size: 24px;
+  }
+
+  .duration-display {
+    font-size: 36px;
+  }
+
+  .control-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}
+

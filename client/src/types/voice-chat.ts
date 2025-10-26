@@ -1,5 +1,6 @@
 import { IAiCompanionChatMessage } from './ai-chat'
 
+// 语音聊天状态
 export enum VoiceChatStatus {
   CALLING,
   WELCOME,
@@ -26,3 +27,17 @@ export type IMessage = IAiCompanionChatMessage & {
   ttsPartEnd?: boolean
   type?: string
 }
+
+// 录音状态
+export interface AudioRecorderState {
+  duration: number;
+  audioUrl: string;
+}
+
+export enum RecorderStatus {
+  IDLE = 'idle',
+  RECORDING = 'recording',
+  PAUSED = 'paused',
+  STOPPED = 'stopped',
+}
+
