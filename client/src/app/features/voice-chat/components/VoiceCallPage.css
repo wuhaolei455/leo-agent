@@ -1,0 +1,93 @@
+.voice-call-page {
+  width: 100vw;
+  height: 100vh;
+  background: #F4F6FF;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.voice-call-page .title {
+  padding: 56px 0 43px;
+  height: 120px;
+  font-size: 17px;
+  text-align: center;
+  color: #272727;
+  box-sizing: border-box;
+  font-weight: 500;
+  line-height: 21px;
+}
+
+.voice-call-page .voice-wave-container {
+  position: fixed;
+  right: 0;
+  bottom: 132px;
+  left: 0;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.voice-call-page .listening {
+  width: 279px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.voice-call-page .hang-up {
+  position: fixed;
+  right: 0;
+  bottom: 16px;
+  left: 0;
+  margin: 0 auto;
+  width: 64px;
+  height: 64px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.voice-call-page .hang-up:hover {
+  transform: scale(1.1);
+}
+
+.voice-call-page .hang-up:active {
+  transform: scale(0.95);
+}
+
+/* 适配安全区域 */
+@supports (padding: max(0px)) {
+  .voice-call-page .voice-wave-container {
+    bottom: max(132px, calc(env(safe-area-inset-bottom) + 132px));
+  }
+
+  .voice-call-page .hang-up {
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px));
+  }
+}
+
+/* 横屏适配 */
+@media screen and (orientation: landscape) {
+  .voice-call-page .title {
+    padding: 46px 0 33px;
+    height: 100px;
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .voice-call-page .title {
+    font-size: 15px;
+  }
+  
+  .voice-call-page .listening {
+    width: 240px;
+    height: 34px;
+  }
+  
+  .voice-call-page .hang-up {
+    width: 56px;
+    height: 56px;
+  }
+}
+

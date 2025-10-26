@@ -2,17 +2,36 @@
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
+html {
+  background: #f5f7fb;
+  background-attachment: fixed;
+  min-height: 100vh;
   height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f5f7fb;
+  background-attachment: fixed;
+  min-height: 100vh;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   color: #1f2330;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
+  height: 100%;
+  background: transparent;
+  position: relative;
 }
 
 a {
@@ -21,11 +40,4 @@ a {
 
 img {
   display: block;
-}
-
-body {
-  margin: 0;
-  font-family: 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
