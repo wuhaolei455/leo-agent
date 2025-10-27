@@ -1,0 +1,66 @@
+/* 固定顶部 TitleBar - 始终固定在顶部，不受键盘影响 */
+.title-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;  /* 高层级，确保始终在最上层 */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  height: 68px;
+  box-sizing: border-box;
+  /* 防止被键盘影响的关键样式 */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* iOS 安全区域适配 */
+@supports (padding: env(safe-area-inset-top)) {
+  .title-bar {
+    padding-top: calc(16px + env(safe-area-inset-top));
+    height: calc(68px + env(safe-area-inset-top));
+  }
+}
+
+.title-bar__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #222;
+}
+
+.title-bar__actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.title-bar__icon-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #4a4a4a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.title-bar__icon-btn:hover {
+  background: rgba(23, 119, 255, 0.08);
+  color: #1777ff;
+}
+
+.title-bar__icon-btn:active {
+  transform: scale(0.95);
+}
+

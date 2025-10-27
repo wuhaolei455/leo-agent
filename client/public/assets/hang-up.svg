@@ -1,0 +1,28 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="grad" cx="0.35" cy="0.35">
+      <stop offset="0%" stop-color="#FF5045"/>
+      <stop offset="100%" stop-color="#E02519"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- 红色圆形背景 -->
+  <circle cx="32" cy="32" r="30" fill="url(#grad)"/>
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#000" stroke-opacity="0.08" stroke-width="1"/>
+  
+  <!-- 高光 -->
+  <ellipse cx="26" cy="23" rx="10" ry="7" fill="#FFF" opacity="0.12"/>
+  
+  <!-- 电话听筒 - 简化版 -->
+  <g transform="translate(32 32) rotate(135)">
+    <!-- 听筒主体 -->
+    <path d="M -9 -3 C -11 -3 -12 -2 -12 0 C -12 2 -11 3 -9 3 L 9 3 C 11 3 12 2 12 0 C 12 -2 11 -3 9 -3 L -9 -3 Z" 
+          fill="white"/>
+    
+    <!-- 左侧圆形听筒 -->
+    <circle cx="-10" cy="0" r="4" fill="white"/>
+    
+    <!-- 右侧圆形话筒 -->
+    <circle cx="10" cy="0" r="4" fill="white"/>
+  </g>
+</svg>

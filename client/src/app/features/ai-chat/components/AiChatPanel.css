@@ -1,10 +1,49 @@
+/* 主容器：为顶部和底部固定元素预留空间 */
 .ai-chat-panel {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  gap: 16px;
-  width: 100%;
-  height: calc(100vh - 160px);
-  max-height: 820px;
+  position: relative;
+  min-height: 100vh;
+  padding-top: 68px;  /* TitleBar高度 */
+  padding-bottom: 110px;  /* composer高度 + 间距 */
+  box-sizing: border-box;
+}
+
+/* iOS 安全区域适配 */
+@supports (padding: env(safe-area-inset-top)) {
+  .ai-chat-panel {
+    padding-top: calc(68px + env(safe-area-inset-top));
+  }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  .ai-chat-panel {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 内容区域：可滚动 */
+.ai-chat-panel__content {
+  position: relative;
+  padding: 0 16px;
+}
+
+/* 固定底部 Composer */
+.ai-chat-panel__composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  padding: 16px;
+  background: #f5f7fb;
+  /* 平滑过渡，适应键盘弹出 */
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 支持安全区域 */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .ai-chat-panel__composer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
 }
 
 

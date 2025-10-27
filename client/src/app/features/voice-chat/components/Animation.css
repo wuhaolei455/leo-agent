@@ -1,0 +1,165 @@
+.animation-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  min-height: 300px;
+}
+
+.animation-circle {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 32px;
+  transition: background 0.3s ease, transform 0.3s ease;
+  will-change: transform, box-shadow;
+}
+
+.animation-inner-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: #F4F6FF;
+  transition: all 0.3s ease;
+}
+
+.animation-status-text {
+  font-size: 16px;
+  color: #272727;
+  font-weight: 500;
+  text-align: center;
+  padding: 0 20px;
+  transition: opacity 0.3s ease;
+  animation: fadeInText 0.5s ease;
+}
+
+@keyframes fadeInText {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 脉冲动画 - 拨号/重连 */
+.animation-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+    box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
+  }
+}
+
+/* 思考动画 - 改为更柔和的旋转加呼吸效果 */
+.animation-thinking {
+  animation: thinking 2s ease-in-out infinite;
+}
+
+@keyframes thinking {
+  0% {
+    transform: rotate(0deg) scale(1);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+    box-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+  }
+}
+
+/* 说话动画 - 更有节奏感 */
+.animation-speaking {
+  animation: speaking 0.8s ease-in-out infinite;
+}
+
+@keyframes speaking {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+  }
+  25% {
+    transform: scale(1.06);
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);
+  }
+  50% {
+    transform: scale(1);
+    box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+  }
+  75% {
+    transform: scale(1.04);
+    box-shadow: 0 0 25px rgba(102, 126, 234, 0.4);
+  }
+}
+
+/* 监听动画 - 柔和的呼吸效果 */
+.animation-listening {
+  animation: breathing 3s ease-in-out infinite;
+}
+
+@keyframes breathing {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 50px rgba(102, 126, 234, 0.6);
+  }
+}
+
+/* 错误动画 - 更明显的抖动 */
+.animation-error {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-8px) rotate(-1deg);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(8px) rotate(1deg);
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .animation-circle {
+    width: 140px;
+    height: 140px;
+  }
+
+  .animation-inner-circle {
+    width: 120px;
+    height: 120px;
+  }
+
+  .animation-status-text {
+    font-size: 14px;
+  }
+}
+
