@@ -1,7 +1,7 @@
 import Recorder from 'js-audio-recorder';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { RecorderStatus } from '../types/voice-chat';
+import { useWebSocket } from './useWebSocket';
 
 interface AudioRecorderOptions {
   serverUrl?: string;
@@ -29,96 +29,67 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
 
     const recorderRef = useRef<Recorder | null>(null);
     const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const streamRef = useRef<MediaStream | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null); // 由链接在一起的音频模块构建的音频处理图形，每个模块由一个AudioNode表示, 会控制所有节点的创建和音频处理解码的执行
+    const analyserRef = useRef<AnalyserNode | null>(null); // 
+    const streamRef = useRef<MediaStream | null>(null); // MediaStreamTrack接口代表的是在一个stream内部的单media track, track音轨
     const vadIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const sendIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const isListeningRef = useRef<boolean>(false);
     const isRecordingRef = useRef<boolean>(false);
-    const socketRef = useRef<Socket | null>(null);
     const lastVoiceTimeRef = useRef<number>(0);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const reconnectAttemptsRef = useRef<number>(0);
     
     const [audioStatus, setAudioStatus] = useState<RecorderStatus>(RecorderStatus.IDLE);
-    const [isConnected, setIsConnected] = useState(false);
     const [response, setResponse] = useState<AudioResponse | null>(null);
     const [currentVolume, setCurrentVolume] = useState<number>(0);
     const [error, setError] = useState<string | null>(null);
 
-    // 重连机制
-    const attemptReconnect = useCallback(() => {
-        if (reconnectAttemptsRef.current >= 5) {
-            setError('连接失败，请检查网络后重试');
+    const {
+        isConnected,
+        error: websocketError,
+        emit: emitWebSocketEvent,
+        on: subscribeWebSocketEvent,
+        reconnect: reconnectWebSocket,
+    } = useWebSocket({
+        serverUrl,
+        enable: enableWebSocket,
+        onConnect: () => {
+            console.log('WebSocket 连接成功');
+        },
+        onDisconnect: (reason) => {
+            console.log('WebSocket 断开连接:', reason);
+        },
+        onError: (message, socketError) => {
+            console.error('WebSocket 连接错误:', socketError);
+            setError(message);
+        },
+    });
+
+    useEffect(() => {
+        if (!enableWebSocket) {
+            setError(null);
             return;
         }
 
-        reconnectAttemptsRef.current += 1;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
-        
-        console.log(`尝试重连 (${reconnectAttemptsRef.current}/5)，等待 ${delay}ms`);
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-            if (socketRef.current) {
-                socketRef.current.connect();
-            }
-        }, delay);
-    }, []);
+        setError(websocketError);
+    }, [websocketError, enableWebSocket]);
 
-    // 初始化 WebSocket 连接
     useEffect(() => {
         if (!enableWebSocket) return;
 
-        socketRef.current = io(serverUrl, {
-            reconnection: false, // 使用自定义重连逻辑
-            timeout: 10000,
-        });
-
-        socketRef.current.on('connect', () => {
-            console.log('WebSocket 连接成功');
-            setIsConnected(true);
-            setError(null);
-            reconnectAttemptsRef.current = 0;
-        });
-
-        socketRef.current.on('disconnect', (reason) => {
-            console.log('WebSocket 断开连接:', reason);
-            setIsConnected(false);
-            
-            // 自动重连（除非是客户端主动断开）
-            if (reason !== 'io client disconnect') {
-                attemptReconnect();
-            }
-        });
-
-        socketRef.current.on('connect_error', (error) => {
-            console.error('WebSocket 连接错误:', error);
-            setError('连接失败');
-            attemptReconnect();
-        });
-
-        socketRef.current.on('audio-response', (data: AudioResponse) => {
+        const unsubscribe = subscribeWebSocketEvent('audio-response', (data: AudioResponse) => {
             console.log('收到服务器响应:', data);
             setResponse(data);
         });
 
-        return () => {
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
-            }
-            if (socketRef.current) {
-                socketRef.current.disconnect();
-            }
-        };
-    }, [serverUrl, enableWebSocket, attemptReconnect]);
+        return unsubscribe;
+    }, [enableWebSocket, subscribeWebSocketEvent]);
 
     // 初始化录音器
     useEffect(() => {
         recorderRef.current = new Recorder({
-            sampleBits: 16,
-            sampleRate: 16000,
-            numChannels: 1,
+            sampleBits: 16, // 16位采样位数
+            sampleRate: 16000, // 采样率，支持 11025、16000、22050、24000、44100、48000，默认是16000
+            numChannels: 1, //声道，支持 1 或 2， 默认是1
         });
 
         return () => {
@@ -146,20 +117,20 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
 
     // 发送音频数据到服务器
     const sendAudioData = useCallback(() => {
-        if (!recorderRef.current || !enableWebSocket || !socketRef.current?.connected) return;
+        if (!recorderRef.current || !enableWebSocket || !isConnected) return;
 
         try {
             const pcmData = recorderRef.current.getPCMBlob();
             if (pcmData && pcmData.size > 0) {
                 pcmData.arrayBuffer().then((arrayBuffer: ArrayBuffer) => {
-                    socketRef.current?.emit('audio-stream', arrayBuffer);
+                    emitWebSocketEvent('audio-stream', arrayBuffer);
                     console.log(`发送音频数据: ${arrayBuffer.byteLength} bytes`);
                 });
             }
         } catch (error) {
             console.error('发送音频数据失败:', error);
         }
-    }, [enableWebSocket]);
+    }, [enableWebSocket, isConnected, emitWebSocketEvent]);
 
     const stopRecording = useCallback(() => {
         if (!recorderRef.current || !isRecordingRef.current) return;
@@ -191,12 +162,12 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
             });
         }
 
-        if (enableWebSocket && socketRef.current) {
-            socketRef.current.emit('stop-recording');
+        if (enableWebSocket) {
+            emitWebSocketEvent('stop-recording');
         }
         
         setAudioStatus(isListeningRef.current ? RecorderStatus.IDLE : RecorderStatus.STOPPED);
-    }, [enableWebSocket, sendAudioData]);
+    }, [enableWebSocket, sendAudioData, emitWebSocketEvent]);
 
     const startRecording = useCallback(async () => {
         if (!recorderRef.current || isRecordingRef.current) return;
@@ -206,8 +177,8 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
             await recorderRef.current.start();
             setAudioStatus(RecorderStatus.RECORDING);
 
-            if (enableWebSocket && socketRef.current) {
-                socketRef.current.emit('start-recording');
+            if (enableWebSocket) {
+                emitWebSocketEvent('start-recording');
             }
 
             // 定期发送音频数据
@@ -222,7 +193,7 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
             console.error('录音失败:', error);
             isRecordingRef.current = false;
         }
-    }, [enableWebSocket, sendAudioData, chunkInterval]);
+    }, [enableWebSocket, sendAudioData, chunkInterval, emitWebSocketEvent]);
 
     const detectVoiceActivity = useCallback((): number => {
         if (!analyserRef.current) return 0;
@@ -246,7 +217,7 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
 
     const startListening = useCallback(async () => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); // 安装可信的origin
             streamRef.current = stream;
             
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -321,11 +292,8 @@ export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
     // 手动重连
     const reconnect = useCallback(() => {
         setError(null);
-        reconnectAttemptsRef.current = 0;
-        if (socketRef.current) {
-            socketRef.current.connect();
-        }
-    }, []);
+        reconnectWebSocket();
+    }, [reconnectWebSocket]);
 
     // 清除响应
     const clearResponse = useCallback(() => {
