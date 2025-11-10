@@ -41,7 +41,7 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleConnection(client: Socket) {
     this.logger.log(`客户端连接: ${client.id}`);
-    
+
     // 初始化会话
     this.sessions.set(client.id, {
       clientId: client.id,
@@ -60,7 +60,7 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleDisconnect(client: Socket) {
     this.logger.log(`客户端断开: ${client.id}`);
-    
+
     // 清理会话数据
     const session = this.sessions.get(client.id);
     if (session) {
@@ -94,14 +94,14 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('start-recording')
   handleStartRecording(@ConnectedSocket() client: Socket): void {
     this.logger.log(`开始录音: ${client.id}`);
-    
+
     const session = this.sessions.get(client.id);
     if (session) {
       session.isRecording = true;
       session.audioChunks = [];
       session.totalBytes = 0;
-      
-      client.emit('recording-started', { 
+
+      client.emit('recording-started', {
         success: true,
         timestamp: new Date().toISOString(),
       });
@@ -111,7 +111,7 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('stop-recording')
   handleStopRecording(@ConnectedSocket() client: Socket): void {
     this.logger.log(`停止录音: ${client.id}`);
-    
+
     const session = this.sessions.get(client.id);
     if (!session) {
       return;
@@ -124,7 +124,7 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.processAudio(client, session);
     }
 
-    client.emit('recording-stopped', { 
+    client.emit('recording-stopped', {
       success: true,
       timestamp: new Date().toISOString(),
       totalBytes: session.totalBytes,
@@ -140,7 +140,9 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     setTimeout(() => {
       // 随机选择一个响应
-      const randomIndex = Math.floor(Math.random() * this.responseTemplates.length);
+      const randomIndex = Math.floor(
+        Math.random() * this.responseTemplates.length,
+      );
       const responseText = this.responseTemplates[randomIndex];
 
       // 根据文本长度估算说话时间 (中文约每字100ms)
@@ -176,11 +178,10 @@ export class AudioGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ): void {
     this.logger.log(`收到测试消息: ${JSON.stringify(data)}`);
-    
+
     client.emit('test-response', {
-      received: data,
+      received: data as string,
       serverTime: new Date().toISOString(),
     });
   }
 }
-

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from './hooks/useWebSocket';
 import './App.css';
 
@@ -166,6 +166,19 @@ function App() {
       second: '2-digit',
     });
   };
+
+  // 心跳机制
+  useEffect(() => {
+    let prev = performance.now();
+    if (isConnected) {
+      setInterval(() => {
+        const now = performance.now();
+        console.log('发送 ping', now - prev);
+        prev = performance.now();
+        emit('ping');
+      }, 5000);
+    }
+  }, [emit, isConnected]);
 
   return (
     <div className="app">

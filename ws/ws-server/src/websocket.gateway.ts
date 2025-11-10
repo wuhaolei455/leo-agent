@@ -20,6 +20,7 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   server: Server;
 
   private connectedClients = new Map<string, Socket>();
+  private pingInterval: NodeJS.Timeout | null = null;
 
   handleConnection(client: Socket) {
     console.log(`客户端已连接: ${client.id}`);
@@ -57,13 +58,6 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
       response: `服务器收到: ${JSON.stringify(data)}`,
       timestamp: new Date().toISOString(),
     });
-
-    // 广播给所有其他客户端
-    client.broadcast.emit('broadcast', {
-      from: client.id,
-      message: data,
-      timestamp: new Date().toISOString(),
-    });
   }
 
   @SubscribeMessage('ping')
@@ -72,6 +66,11 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     client.emit('pong', {
       timestamp: new Date().toISOString(),
     });
+    clearInterval(this.pingInterval);
+    this.pingInterval = setInterval(() => {
+      client.disconnect();
+      console.log('断开客户端', client.id);
+    }, 15000);
   }
 
   @SubscribeMessage('broadcast')
