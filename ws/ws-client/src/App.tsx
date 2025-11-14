@@ -33,9 +33,16 @@ function App() {
     emit,
     on,
     reconnect,
+    heartbeat: heartbeatManager,
   } = useWebSocket({
     serverUrl: 'http://localhost:9000',
     enable: true,
+    heartbeat: {
+      interval: 5000, // 每5秒发送一次心跳
+      timeout: 3000,  // 3秒超时
+      maxMissed: 3,   // 最多错过3次
+      autoStart: true, // 连接后自动启动
+    },
     onConnect: handleConnect,
     onDisconnect: handleDisconnect,
     onError: handleError,
@@ -167,18 +174,13 @@ function App() {
     });
   };
 
-  // 心跳机制
+  // 心跳已由 useWebSocket 内部的 Web Worker 自动管理
+  // 可以通过 heartbeatManager 查看心跳状态
   useEffect(() => {
-    let prev = performance.now();
-    if (isConnected) {
-      setInterval(() => {
-        const now = performance.now();
-        console.log('发送 ping', now - prev);
-        prev = performance.now();
-        emit('ping');
-      }, 5000);
+    if (heartbeatManager) {
+      console.log('心跳状态:', heartbeatManager.status);
     }
-  }, [emit, isConnected]);
+  }, [heartbeatManager]);
 
   return (
     <div className="app">
@@ -190,6 +192,11 @@ function App() {
               {isConnected ? '已连接' : '未连接'}
             </div>
             <div className="online-count">在线: {onlineCount}</div>
+            {heartbeatManager && (
+              <div className="heartbeat-status" title={`错过: ${heartbeatManager.status.missedCount} 次`}>
+                💓 {heartbeatManager.status.isActive ? '活跃' : '已停'}
+              </div>
+            )}
           </div>
         </header>
 

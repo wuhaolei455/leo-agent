@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ManagerOptions, Socket, SocketOptions, io } from 'socket.io-client';
+import { useHeartbeat } from './useHeartbeat';
+import type { HeartbeatConfig } from '../types/heartbeat';
 
 type Listener = {
     event: string;
@@ -11,6 +13,13 @@ interface UseWebSocketOptions {
     enable?: boolean;
     maxReconnectAttempts?: number;
     connectionOptions?: Partial<ManagerOptions & SocketOptions>;
+    /** 心跳配置，传入 false 禁用心跳 */
+    heartbeat?: HeartbeatConfig | false;
+    /** 心跳事件名称 */
+    heartbeatEvent?: {
+        ping: string;
+        pong: string;
+    };
     onConnect?: (socket: Socket) => void;
     onDisconnect?: (reason: Socket.DisconnectReason, socket: Socket) => void;
     onError?: (message: string, error?: Error) => void;
@@ -21,6 +30,8 @@ export const useWebSocket = ({
     enable = true,
     maxReconnectAttempts = 5,
     connectionOptions,
+    heartbeat = { interval: 5000, timeout: 3000, maxMissed: 3, autoStart: true },
+    heartbeatEvent = { ping: 'ping', pong: 'pong' },
     onConnect,
     onDisconnect,
     onError,
@@ -32,6 +43,30 @@ export const useWebSocket = ({
 
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // 心跳机制
+    const heartbeatHook = useHeartbeat(
+        heartbeat !== false ? heartbeat : { autoStart: false },
+        {
+            onPing: (timestamp) => {
+                // 发送心跳到服务器
+                if (socketRef.current?.connected) {
+                    socketRef.current.emit(heartbeatEvent.ping, { timestamp });
+                }
+            },
+            onTimeout: (missedCount) => {
+                console.error(`心跳超时，连续 ${missedCount} 次未收到响应`);
+                // 心跳超时，可能需要重连
+                if (socketRef.current?.connected) {
+                    socketRef.current.disconnect();
+                }
+            },
+            onError: (message) => {
+                console.error('心跳错误:', message);
+                onError?.(message);
+            },
+        }
+    );
 
     const clearReconnectTimer = useCallback(() => {
         if (reconnectTimeoutRef.current) {
@@ -100,11 +135,23 @@ export const useWebSocket = ({
             setError(null);
             reconnectAttemptsRef.current = 0;
             clearReconnectTimer();
+            
+            // 启动心跳
+            if (heartbeat !== false) {
+                heartbeatHook.start();
+            }
+            
             onConnect?.(socket);
         };
 
         const handleDisconnect = (reason: Socket.DisconnectReason) => {
             setIsConnected(false);
+            
+            // 停止心跳
+            if (heartbeat !== false) {
+                heartbeatHook.stop();
+            }
+            
             onDisconnect?.(reason, socket);
 
             if (reason !== 'io client disconnect') {
@@ -123,10 +170,21 @@ export const useWebSocket = ({
         socket.on('disconnect', handleDisconnect);
         socket.on('connect_error', handleConnectError);
 
+        // 监听 pong 响应
+        if (heartbeat !== false) {
+            socket.on(heartbeatEvent.pong, () => {
+                heartbeatHook.notifyPong();
+            });
+        }
+
         return () => {
             socket.off('connect', handleConnect);
             socket.off('disconnect', handleDisconnect);
             socket.off('connect_error', handleConnectError);
+            
+            if (heartbeat !== false) {
+                socket.off(heartbeatEvent.pong);
+            }
 
             listenersRef.current.forEach(({ event, handler }) => {
                 socket.off(event, handler);
@@ -135,7 +193,7 @@ export const useWebSocket = ({
             clearReconnectTimer();
             socket.disconnect();
         };
-    }, [serverUrl, enable, connectionOptions, registerStoredListeners, attemptReconnect, clearReconnectTimer, onConnect, onDisconnect, onError]);
+    }, [serverUrl, enable, connectionOptions, registerStoredListeners, attemptReconnect, clearReconnectTimer, onConnect, onDisconnect, onError, heartbeat, heartbeatEvent, heartbeatHook]);
 
     const on = useCallback(
         (event: string, handler: (...args: any[]) => void) => {
@@ -183,6 +241,7 @@ export const useWebSocket = ({
         on,
         reconnect,
         disconnect,
+        heartbeat: heartbeat !== false ? heartbeatHook : null,
     };
 };
 

@@ -68,6 +68,23 @@
   font-weight: 500;
 }
 
+.heartbeat-status {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: help;
+  transition: all 0.3s;
+}
+
+.heartbeat-status:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
 .error-banner {
   background: #fee2e2;
   color: #dc2626;
