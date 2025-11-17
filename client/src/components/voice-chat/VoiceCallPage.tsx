@@ -117,10 +117,10 @@ export function VoiceCallPage() {
   const navigate = useNavigate();
   const [voiceChatStatus, setVoiceChatStatus] = useState<VoiceChatStatus>(VoiceChatStatus.CALLING);
 
-  const { 
-    startListening, 
-    stopListening, 
-    isConnected, 
+  const {
+    startListening,
+    stopListening,
+    isConnected,
     response,
     audioStatus,
     currentVolume,
@@ -129,7 +129,7 @@ export function VoiceCallPage() {
     reconnect,
     clearResponse,
   } = useAudioRecorder({
-    serverUrl: 'http://localhost:3002',
+    serverUrl: 'ws://localhost:3002',
     silenceThreshold: 1500,
     volumeThreshold: 1.5,
     chunkInterval: 500,

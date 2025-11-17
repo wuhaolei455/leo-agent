@@ -20,7 +20,7 @@ interface AudioResponse {
 
 export const useAudioRecorder = (options: AudioRecorderOptions = {}) => {
     const {
-        serverUrl = 'http://localhost:3002',
+        serverUrl = 'ws://localhost:3002',
         silenceThreshold = 1500,
         volumeThreshold = 1.5,
         chunkInterval = 500,

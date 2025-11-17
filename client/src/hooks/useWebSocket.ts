@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ManagerOptions, Socket, SocketOptions, io } from 'socket.io-client';
+import { WebSocketClient, WebSocketEventType, WebSocketMessageData } from 'holly-websocket';
 
 type Listener = {
     event: string;
@@ -10,173 +10,178 @@ interface UseWebSocketOptions {
     serverUrl?: string;
     enable?: boolean;
     maxReconnectAttempts?: number;
-    connectionOptions?: Partial<ManagerOptions & SocketOptions>;
-    onConnect?: (socket: Socket) => void;
-    onDisconnect?: (reason: Socket.DisconnectReason, socket: Socket) => void;
+    onConnect?: () => void;
+    onDisconnect?: (reason: string) => void;
     onError?: (message: string, error?: Error) => void;
 }
 
 export const useWebSocket = ({
-    serverUrl = 'http://localhost:3002',
+    serverUrl = 'ws://localhost:3002',
     enable = true,
     maxReconnectAttempts = 5,
-    connectionOptions,
     onConnect,
     onDisconnect,
     onError,
 }: UseWebSocketOptions = {}) => {
-    const socketRef = useRef<Socket | null>(null);
+    const clientRef = useRef<WebSocketClient | null>(null);
     const listenersRef = useRef<Listener[]>([]);
-    const reconnectAttemptsRef = useRef(0);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const clearReconnectTimer = useCallback(() => {
-        if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-            reconnectTimeoutRef.current = null;
-        }
-    }, []);
-
-    const registerStoredListeners = useCallback((socket: Socket) => {
+    const registerStoredListeners = useCallback((client: WebSocketClient) => {
         listenersRef.current.forEach(({ event, handler }) => {
-            socket.on(event, handler);
+            client.on(WebSocketEventType.MESSAGE, (data: WebSocketMessageData) => {
+                try {
+                    // 尝试解析 JSON 消息
+                    const message = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                    if (message.event === event) {
+                        handler(message.data);
+                    }
+                } catch (e) {
+                    // 如果不是 JSON 格式，直接传递原始数据
+                    handler(data.data);
+                }
+            });
         });
     }, []);
-
-    const attemptReconnect = useCallback(() => {
-        if (!enable || !socketRef.current) {
-            return;
-        }
-
-        if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-            const message = '连接失败，请检查网络后重试';
-            setError(message);
-            onError?.(message);
-            return;
-        }
-
-        reconnectAttemptsRef.current += 1;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 10000);
-
-        console.log(`尝试重连 (${reconnectAttemptsRef.current}/${maxReconnectAttempts})，等待 ${delay}ms`);
-
-        clearReconnectTimer();
-        reconnectTimeoutRef.current = setTimeout(() => {
-            socketRef.current?.connect();
-        }, delay);
-    }, [enable, maxReconnectAttempts, onError, clearReconnectTimer]);
 
     useEffect(() => {
         if (!enable) {
             setIsConnected(false);
             setError(null);
-            clearReconnectTimer();
 
-            if (socketRef.current) {
-                listenersRef.current.forEach(({ event, handler }) => {
-                    socketRef.current?.off(event, handler);
-                });
-                socketRef.current.disconnect();
-                socketRef.current = null;
+            if (clientRef.current) {
+                clientRef.current.destroy();
+                clientRef.current = null;
             }
 
             return;
         }
 
-        const socket = io(serverUrl, {
-            reconnection: false,
-            timeout: 10000,
-            ...connectionOptions,
+        const client = new WebSocketClient({
+            url: serverUrl,
+            reconnect: true,
+            reconnectAttempts: maxReconnectAttempts,
+            reconnectInterval: 3000,
+            heartbeat: true,
+            heartbeatInterval: 30000,
+            heartbeatMessage: 'ping',
+            debug: true,
         });
 
-        socketRef.current = socket;
-        registerStoredListeners(socket);
+        clientRef.current = client;
+        registerStoredListeners(client);
 
-        const handleConnect = () => {
+        const handleOpen = () => {
+            console.log('[WebSocket] 连接已建立');
             setIsConnected(true);
             setError(null);
-            reconnectAttemptsRef.current = 0;
-            clearReconnectTimer();
-            onConnect?.(socket);
+            onConnect?.();
         };
 
-        const handleDisconnect = (reason: Socket.DisconnectReason) => {
+        const handleClose = (data: any) => {
+            console.log('[WebSocket] 连接已关闭', data);
             setIsConnected(false);
-            onDisconnect?.(reason, socket);
-
-            if (reason !== 'io client disconnect') {
-                attemptReconnect();
-            }
+            onDisconnect?.(data.reason || 'unknown');
         };
 
-        const handleConnectError = (socketError: Error) => {
+        const handleError = (errorData: any) => {
+            console.error('[WebSocket] 连接错误', errorData);
             const message = '连接失败';
             setError(message);
-            onError?.(message, socketError);
-            attemptReconnect();
+            onError?.(message, errorData.error);
         };
 
-        socket.on('connect', handleConnect);
-        socket.on('disconnect', handleDisconnect);
-        socket.on('connect_error', handleConnectError);
+        const handleReconnecting = (data: any) => {
+            console.log(`[WebSocket] 正在重连 (${data.attempt}/${data.maxAttempts})`);
+            setError(`正在重连 (${data.attempt}/${data.maxAttempts})`);
+        };
+
+        const handleReconnected = () => {
+            console.log('[WebSocket] 重连成功');
+            setIsConnected(true);
+            setError(null);
+            onConnect?.();
+        };
+
+        const handleReconnectFailed = (data: any) => {
+            console.error('[WebSocket] 重连失败', data);
+            const message = '连接失败，请检查网络后重试';
+            setError(message);
+            onError?.(message);
+        };
+
+        client.on(WebSocketEventType.OPEN, handleOpen);
+        client.on(WebSocketEventType.CLOSE, handleClose);
+        client.on(WebSocketEventType.ERROR, handleError);
+        client.on(WebSocketEventType.RECONNECTING, handleReconnecting);
+        client.on(WebSocketEventType.RECONNECTED, handleReconnected);
+        client.on(WebSocketEventType.RECONNECT_FAILED, handleReconnectFailed);
+
+        client.connect();
 
         return () => {
-            socket.off('connect', handleConnect);
-            socket.off('disconnect', handleDisconnect);
-            socket.off('connect_error', handleConnectError);
-
-            listenersRef.current.forEach(({ event, handler }) => {
-                socket.off(event, handler);
-            });
-
-            clearReconnectTimer();
-            socket.disconnect();
+            client.offAll();
+            client.destroy();
         };
-    }, [serverUrl, enable, connectionOptions, registerStoredListeners, attemptReconnect, clearReconnectTimer, onConnect, onDisconnect, onError]);
+    }, [serverUrl, enable, maxReconnectAttempts, registerStoredListeners, onConnect, onDisconnect, onError]);
 
     const on = useCallback(
         (event: string, handler: (...args: any[]) => void) => {
             const listener: Listener = { event, handler };
             listenersRef.current.push(listener);
 
-            if (socketRef.current) {
-                socketRef.current.on(event, handler);
+            if (clientRef.current && clientRef.current.isConnected()) {
+                clientRef.current.on(WebSocketEventType.MESSAGE, (data: WebSocketMessageData) => {
+                    try {
+                        const message = typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
+                        if (message.event === event) {
+                            handler(message.data);
+                        }
+                    } catch (e) {
+                        handler(data.data);
+                    }
+                });
             }
 
             return () => {
                 listenersRef.current = listenersRef.current.filter((item) => item !== listener);
-                socketRef.current?.off(event, handler);
             };
         },
         []
     );
 
     const emit = useCallback((event: string, payload?: unknown) => {
-        if (!socketRef.current?.connected) {
+        if (!clientRef.current?.isConnected()) {
+            console.warn('[WebSocket] 尝试发送消息但未连接');
             return false;
         }
 
-        socketRef.current.emit(event, payload);
+        const message = {
+            event,
+            data: payload,
+        };
+
+        clientRef.current.sendJSON(message);
         return true;
     }, []);
 
     const reconnect = useCallback(() => {
         setError(null);
-        reconnectAttemptsRef.current = 0;
-        clearReconnectTimer();
-        socketRef.current?.connect();
-    }, [clearReconnectTimer]);
+        if (clientRef.current) {
+            clientRef.current.connect();
+        }
+    }, []);
 
     const disconnect = useCallback(() => {
-        clearReconnectTimer();
-        socketRef.current?.disconnect();
-    }, [clearReconnectTimer]);
+        if (clientRef.current) {
+            clientRef.current.disconnect();
+        }
+    }, []);
 
     return {
-        socket: socketRef.current,
+        client: clientRef.current,
         isConnected,
         error,
         emit,

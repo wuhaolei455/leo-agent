@@ -15,12 +15,12 @@
     "event-source-polyfill": "^1.0.31",
     "holly-fsm": "^1.0.1",
     "holly-sse": "^1.0.3",
+    "holly-websocket": "^0.1.0",
     "js-audio-recorder": "^1.0.7",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.8.0",
     "react-scripts": "5.0.1",
-    "socket.io-client": "^4.8.1",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
