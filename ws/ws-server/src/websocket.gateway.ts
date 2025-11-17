@@ -20,11 +20,31 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   server: Server;
 
   private connectedClients = new Map<string, Socket>();
-  private pingInterval: NodeJS.Timeout | null = null;
+  private heartbeatTimeouts = new Map<string, NodeJS.Timeout>();
+  private readonly HEARTBEAT_TIMEOUT = 20000; // 20s 未收到心跳则判定超时
+
+  private scheduleHeartbeatTimeout(client: Socket) {
+    this.clearHeartbeatTimeout(client.id);
+    const timeout = setTimeout(() => {
+      console.warn(`客户端 ${client.id} 心跳超时，主动断开连接`);
+      client.disconnect();
+      this.heartbeatTimeouts.delete(client.id);
+    }, this.HEARTBEAT_TIMEOUT);
+    this.heartbeatTimeouts.set(client.id, timeout);
+  }
+
+  private clearHeartbeatTimeout(clientId: string) {
+    const timeout = this.heartbeatTimeouts.get(clientId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.heartbeatTimeouts.delete(clientId);
+    }
+  }
 
   handleConnection(client: Socket) {
     console.log(`客户端已连接: ${client.id}`);
     this.connectedClients.set(client.id, client);
+    this.scheduleHeartbeatTimeout(client);
     
     // 发送欢迎消息
     client.emit('welcome', {
@@ -40,6 +60,7 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   handleDisconnect(client: Socket) {
     console.log(`客户端已断开: ${client.id}`);
     this.connectedClients.delete(client.id);
+    this.clearHeartbeatTimeout(client.id);
     
     // 广播在线人数
     this.broadcastOnlineCount();
@@ -66,11 +87,7 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     client.emit('pong', {
       timestamp: new Date().toISOString(),
     });
-    clearInterval(this.pingInterval);
-    this.pingInterval = setInterval(() => {
-      client.disconnect();
-      console.log('断开客户端', client.id);
-    }, 15000);
+    this.scheduleHeartbeatTimeout(client);
   }
 
   @SubscribeMessage('broadcast')
