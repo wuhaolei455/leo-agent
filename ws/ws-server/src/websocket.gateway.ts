@@ -44,7 +44,6 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   handleConnection(client: Socket) {
     console.log(`客户端已连接: ${client.id}`);
     this.connectedClients.set(client.id, client);
-    this.scheduleHeartbeatTimeout(client);
     
     // 发送欢迎消息
     client.emit('welcome', {
@@ -87,6 +86,7 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
     client.emit('pong', {
       timestamp: new Date().toISOString(),
     });
+    // 仅在收到首个心跳后才开始超时监控，避免无心跳能力的客户端被误判
     this.scheduleHeartbeatTimeout(client);
   }
 
